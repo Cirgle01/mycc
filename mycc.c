@@ -217,33 +217,33 @@ Node *primary() {
 void gen(Node *node) {
     // 仅单个数字的情况
     if (node->type == ND_NUM) {
-        printf("  push %d\n", node->val);
+        printf("    push %d\n", node->val);
         return;
     }
 
     gen(node->lhs);
     gen(node->rhs);
 
-    printf("  pop rdi\n");
-    printf("  pop rax\n");
+    printf("    pop rdi\n");
+    printf("    pop rax\n");
 
     switch (node->type) {
     case ND_ADD:
-        printf("  add rax, rdi\n");
+        printf("    add rax, rdi\n");
         break;
     case ND_SUB:
-        printf("  sub rax, rdi\n");
+        printf("    sub rax, rdi\n");
         break;
     case ND_MUL:
-        printf("  imul rax, rdi\n");
+        printf("    imul rax, rdi\n");
         break;
     case ND_DIV:
-        printf("  cqo\n");
-        printf("  idiv rdi\n");
+        printf("    cqo\n");
+        printf("    idiv rdi\n");
         break;
     }
 
-    printf("  push rax\n");
+    printf("    push rax\n");
 }
 
 
@@ -270,7 +270,7 @@ int main(int argc, char **argv) {
     gen(node);
 
     // 汇编 出栈
-    printf("  pop rax\n");
+    printf("    pop rax\n");
 
     // 汇编 返回
     printf("    ret\n");
