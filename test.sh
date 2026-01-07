@@ -4,7 +4,7 @@ assert() {
   input="$2"
 
   ./mycc "$input" > tmp.s
-  gcc -o tmp tmp.s
+  cc -o tmp tmp.s
   ./tmp
   actual="$?"
 
