@@ -105,7 +105,7 @@ int main(int argc, char **argv) {
         error("参数数量错误");
         return 1;
     }
-    
+
     //切分token
     token = tokenize(argv[1]);
 
@@ -113,6 +113,9 @@ int main(int argc, char **argv) {
     printf(".intel_syntax noprefix\n");
     printf(".globl main\n");
     printf("main:\n");
+
+    // 表达式开头必须是数字，检查这一点并输出第一条mov指令
+    printf("  mov rax, %d\n", expect_number());
 
     // 在消耗'+ <数字>'或'- <数字>'token序列的同时输出汇编代码
     while (!at_eof()) {
