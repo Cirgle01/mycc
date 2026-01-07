@@ -353,6 +353,9 @@ int main(int argc, char **argv) {
 
     // 汇编开头
     printf(".intel_syntax noprefix\n");
+    // 设置不启用可执行堆栈, 防止编译时警告
+    printf(".section .note.GNU-stack,\"\",@progbits\n");
+    printf(".section .text\n");
     printf(".globl main\n");
     printf("main:\n");
 
