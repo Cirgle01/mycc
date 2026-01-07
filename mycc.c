@@ -17,7 +17,8 @@ typedef struct Token {
     TokenType type;      //Token类型
     struct Token *next;  //指向下一个Token
     int val;             //TK_NUM 时有值
-    char *str;           //TK_RESERVED 时有值, 为指向源代码的指针
+    char *str;           //指向源代码字符串中token首字符的指针
+    int len;             //token长度
 } Token;
 
 // 抽象语法树节点类型
@@ -26,6 +27,10 @@ typedef enum {
     ND_SUB, // -
     ND_MUL, // *
     ND_DIV, // /
+    ND_EQ,  // ==
+    ND_NE,  // !=
+    ND_LT,  // <
+    ND_LE,  // <=
     ND_NUM, // 整数
 } NodeType;
 
@@ -56,10 +61,11 @@ void error(char *fmt, ...) {
 }
 
 // 创建新token并连接到cur后面
-Token *new_token(TokenType kind, Token *cur, char *str) {
+Token *new_token(TokenType kind, Token *cur, char *str, int len) {
     Token *tok = calloc(1, sizeof(Token));
     tok->type = kind;
     tok->str = str;
+    tok->len = len;
     cur->next = tok;
     return tok;
 }
@@ -98,17 +104,21 @@ void error_at(char *loc, char *fmt, ...) {
 }
 
 // 如果下一个token是期望的符号, 则向前读取一个token并返回真, 否则返回假(依赖全局变量token)
-bool consume(char op) {
-    if (token->type != TK_RESERVED || token->str[0] != op)
+bool consume(char *op) {
+    if (token->type != TK_RESERVED 
+        || strlen(op) != token->len
+        || memcmp(token->str, op, token->len))
         return false;
     token = token->next;
     return true;
 }
 
 // 如果下一个token是期望的符号，则向前读取一个token, 否则报告错误(依赖全局变量token)
-void expect(char op) {
-    if (token->type != TK_RESERVED || token->str[0] != op)
-        error_at(token->str, "不是'%c'", op);
+void expect(char *op) {
+    if (token->type != TK_RESERVED 
+        || strlen(op) != token->len 
+        || memcmp(token->str, op, token->len))
+        error_at(token->str, "不是'%s'", op);
     token = token->next;
 }
 
@@ -126,6 +136,12 @@ bool at_eof() {
   return token->type == TK_EOF;
 }
 
+// 检查多字符运算符
+bool startswith(char *p, char *q) {
+  return memcmp(p, q, strlen(q)) == 0;
+}
+
+
 // 将输入字符串p进行token切分并返回
 Token *tokenize(char *p) {
     Token head;
@@ -136,22 +152,33 @@ Token *tokenize(char *p) {
         // 跳过空白字符
         if (isspace(*p)) {
             p++;
-        }
-        // 是符号, 创建新token
-        else if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')') {
-            cur = new_token(TK_RESERVED, cur, p++);
+            continue;
         }
         // 是数字, 创建新token
-        else if (isdigit(*p)) {
-            cur = new_token(TK_NUM, cur, p);
+        if (isdigit(*p)) {
+            cur = new_token(TK_NUM, cur, p, 0);
+            char *q = p;
             // strtol(p, &p, 10):十进制向后读取数字,返回 long
             cur->val = strtol(p, &p, 10);
+            cur->len = p - q;
+            continue;
         }
-        else{
-            error_at(p, "无法识别的字符");
+        // 是双字符符号, 创建新token
+        if (startswith(p, "==") || startswith(p, "!=")
+            || startswith(p, "<=") || startswith(p, ">=")) {
+            cur = new_token(TK_RESERVED, cur, p, 2);
+            p += 2;
+            continue;
         }
+        // 是单字符符号, 创建新token
+        if (strchr("+-*/()<>", *p)) {
+            cur = new_token(TK_RESERVED, cur, p++, 1);
+            continue;
+        }
+        
+        error_at(p, "无法识别的字符");
     }
-    new_token(TK_EOF, cur, p);
+    new_token(TK_EOF, cur, p, 1);
     return head.next;
 }
 
@@ -161,23 +188,66 @@ expr    = mul ("+" mul | "-" mul)*
 mul     = unary ("*" unary | "/" unary)*
 unary   = ("+" | "-")? primary
 primary = num | "(" expr ")"
+
+expr       = equality
+equality   = relational ("==" relational | "!=" relational)*
+relational = add ("<" add | "<=" add | ">" add | ">=" add)*
+add        = mul ("+" mul | "-" mul)*
+mul        = unary ("*" unary | "/" unary)*
+unary      = ("+" | "-")? primary
+primary    = num | "(" expr ")"
 */
 // 函数声明
 Node *expr();
+Node *equality();
+Node *relational();
+Node *add();
 Node *mul();
 Node *primary();
 Node *unary();
 
-Node *expr() {
+Node *expr(){
+    return equality();
+}
+
+Node *equality(){
+    Node *node = relational();
+    if (consume("=="))
+        node = new_node(ND_EQ, node, relational());
+    else if (consume("!="))
+        node = new_node(ND_NE, node, relational());
+    else
+        return node;
+}
+
+// > >= 用左右互换的 < <= 表示
+Node *relational(){
+    Node *node = add();
+
+    for (;;) {
+        if (consume("<"))
+            node = new_node(ND_LT, node, add());
+        else if (consume(">"))
+            node = new_node(ND_LT, add(), node);
+        else if (consume("<="))
+            node = new_node(ND_LE, node, add());
+        else if (consume(">="))
+            node = new_node(ND_LE, add(), node);
+        else
+            return node;
+    }
+}
+
+Node *add() {
     Node *node = mul();
 
     for (;;) {
-        if (consume('+'))
-        node = new_node(ND_ADD, node, mul());
-        else if (consume('-'))
-        node = new_node(ND_SUB, node, mul());
+        if (consume("+"))
+            node = new_node(ND_ADD, node, mul());
+        else if (consume("-"))
+            node = new_node(ND_SUB, node, mul());
         else
-        return node;
+            return node;
     }
 }
 
@@ -185,28 +255,28 @@ Node *mul() {
     Node *node = unary();
 
     for (;;) {
-        if (consume('*'))
-        node = new_node(ND_MUL, node, unary());
-        else if (consume('/'))
-        node = new_node(ND_DIV, node, unary());
+        if (consume("*"))
+            node = new_node(ND_MUL, node, unary());
+        else if (consume("/"))
+            node = new_node(ND_DIV, node, unary());
         else
         return node;
     }
 }
 
 Node *unary() {
-  if (consume('+'))
+    if (consume("+"))
+        return unary();
+    if (consume("-"))
+        return new_node(ND_SUB, new_node_num(0), unary());
     return primary();
-  if (consume('-'))
-    return new_node(ND_SUB, new_node_num(0), primary());
-  return primary();
 }
 
 Node *primary() {
     // 如果有'(',则判断为 '(' expr ')'
-    if (consume('(')) {
+    if (consume("(")) {
         Node *node = expr();
-        expect(')');
+        expect(")");
         return node;
     }
     // 否则是整数(叶子节点)
@@ -240,6 +310,26 @@ void gen(Node *node) {
     case ND_DIV:
         printf("    cqo\n");
         printf("    idiv rdi\n");
+        break;
+    case ND_EQ:
+        printf("    cmp rax, rdi\n");
+        printf("    sete al\n");
+        printf("    movzb rax, al\n");
+        break;
+    case ND_NE:
+        printf("    cmp rax, rdi\n");
+        printf("    setne al\n");
+        printf("    movzb rax, al\n");
+        break;
+    case ND_LT:
+        printf("    cmp rax, rdi\n");
+        printf("    setl al\n");
+        printf("    movzb rax, al\n");
+        break;
+    case ND_LE:
+        printf("    cmp rax, rdi\n");
+        printf("    setle al\n");
+        printf("    movzb rax, al\n");
         break;
     }
 
