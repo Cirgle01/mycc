@@ -64,13 +64,13 @@ Token *tokenize(char *p) {
         // 是双字符符号, 创建新token
         if (startswith(p, "==") || startswith(p, "!=")
             || startswith(p, "<=") || startswith(p, ">=")) {
-            cur = new_token(TK_RESERVED, cur, p, 2);
+            cur = new_token(TK_PUNCT, cur, p, 2);
             p += 2;
             continue;
         }
         // 是单字符符号, 创建新token
         if (strchr("+-*/()<>", *p)) {
-            cur = new_token(TK_RESERVED, cur, p++, 1);
+            cur = new_token(TK_PUNCT, cur, p++, 1);
             continue;
         }
         
@@ -86,7 +86,7 @@ Token *tokenize(char *p) {
 
 // 如果下一个token是期望的符号, 则向前读取一个token并返回真, 否则返回假(依赖全局变量token)
 bool consume(Token **token, char *op) {
-    if ((*token)->type != TK_RESERVED 
+    if ((*token)->type != TK_PUNCT 
         || strlen(op) != (*token)->len
         || memcmp((*token)->loc, op, (*token)->len))
         return false;
@@ -96,7 +96,7 @@ bool consume(Token **token, char *op) {
 
 // 如果下一个token是期望的符号，则向前读取一个token, 否则报告错误(依赖全局变量token)
 void expect(Token **token, char *op) {
-    if ((*token)->type != TK_RESERVED 
+    if ((*token)->type != TK_PUNCT 
         || strlen(op) != (*token)->len 
         || memcmp((*token)->loc, op, (*token)->len))
         error_at_origin((*token)->loc, "不是'%s'", op);
@@ -115,4 +115,23 @@ int expect_number(Token **token) {
 // 检查是否在末尾token(依赖全局变量token)
 bool at_eof(Token *token) {
   return token->type == TK_EOF;
+}
+
+// 打印所有token
+void print_token(Token *token){
+    printf("token列表:\n");
+    for (Token *cur = token; !at_eof(cur); cur = cur->next)
+    {
+        if (cur->type == TK_NUM){
+            printf("( %d , 数字 )\n", cur->val);
+        } 
+        else if (cur->type == TK_PUNCT) {
+            char punct[10] = {0};
+            strncpy(punct, cur->loc, cur->len);
+            printf("( \"%s\" , 符号 )\n", punct);
+        }
+        else
+            error_at_origin(cur->loc, "打印时遇到未知的token类型");
+    }
+    printf("\n");
 }

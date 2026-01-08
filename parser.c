@@ -116,6 +116,7 @@ static Node *primary(Token **token) {
     return new_node_num(expect_number(token));
 }
 
+// 构建抽象语法树
 Node *parse(Token **token){
   Node *node = expr(token);
   return node;

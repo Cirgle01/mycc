@@ -52,6 +52,7 @@ static void gen_expr(Node *node) {
     printf("    push rax\n");
 }
 
+// 生成汇编代码
 void codegen(Node *node)
 {
     // 汇编开头

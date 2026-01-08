@@ -15,7 +15,7 @@
 
 //token 类别
 typedef enum {
-    TK_RESERVED, // 符号
+    TK_PUNCT, // 符号
     TK_NUM,      // 整数类型
     TK_EOF,      // 终止符号
 } TokenType;
@@ -35,6 +35,7 @@ bool consume(Token **token, char *op);
 void expect(Token **token, char *op);
 int expect_number(Token **token);
 bool at_eof(Token *token);
+void print_token(Token *token);
 
 //
 // parser.c
