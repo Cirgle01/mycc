@@ -13,6 +13,7 @@ static void parse_args(int argc, char **argv) {
         if (strcmp(argv[i], "-p") == 0) {
             opt_p = true;
             if (i + 1 < argc) {
+                // 检查-p后内容
                 for (int j = 0; j < strlen(argv[i+1]); ++j){
                     if (argv[i+1][j] == 't')
                         opt_pt = true;
