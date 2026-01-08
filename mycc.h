@@ -7,6 +7,7 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdarg.h>
+#include <errno.h>
 
 //
 // lexer.c
@@ -73,5 +74,6 @@ void codegen(Node *node);
 //
 
 void error(char *fmt, ...);
+char *read_file(char *path);
 
 #endif
