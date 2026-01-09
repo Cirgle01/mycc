@@ -126,7 +126,7 @@ void print_token(Token *token){
             printf("( %d , 数字 )\n", cur->val);
         } 
         else if (cur->type == TK_PUNCT) {
-            char punct[10] = {0};
+            char punct[TMP_STR_SIZE] = {0};
             strncpy(punct, cur->loc, cur->len);
             printf("( \"%s\" , 符号 )\n", punct);
         }

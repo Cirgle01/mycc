@@ -10,6 +10,8 @@
 #include <assert.h>
 #include <errno.h>
 
+#define TMP_STR_SIZE 10
+
 //
 // lexer.c
 //
