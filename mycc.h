@@ -38,41 +38,48 @@ bool consume(Token **token, char *op);
 void expect(Token **token, char *op);
 int expect_number(Token **token);
 bool at_eof(Token *token);
-void print_token(Token *token);
+void print_tokens(Token *token);
 
 //
 // parser.c
 //
 
-// 抽象语法树节点类别
+// 四元式运算符
 typedef enum {
-    ND_ADD, // +
-    ND_SUB, // -
-    ND_MUL, // *
-    ND_DIV, // /
-    ND_NEG, // unary -
-    ND_EQ,  // ==
-    ND_NE,  // !=
-    ND_LT,  // <
-    ND_LE,  // <=
-    ND_NUM, // 整数
-} NodeType;
+    OPR_ADD, // +
+    OPR_SUB, // -
+    OPR_MUL, // *
+    OPR_DIV, // /
+    OPR_EQ,  // ==
+    OPR_NE,  // !=
+    OPR_LT,  // <
+    OPR_LE,  // <=
+    OPR_NEG, // unary -
+    OPR_IS  // unary =
+} Optor;
 
-// 抽象语法树节点结构体
-typedef struct Node {
-    NodeType type;        // 节点类型
-    struct Node *lhs;     // 左子节点
-    struct Node *rhs;     // 右子节点
-    int val;              // 仅当 kind 为 ND_NUM 时使用
-} Node;
+// 四元式操作数
+typedef struct Opnd {
+    int val;        // 数值
+    bool istemp;  // 类型 是否为临时变量
+} Opnd;
 
-Node *parse(Token **token);
+typedef struct Quad {
+    Optor opr;  // 运算符
+    Opnd *arg1;  // 操作数1
+    Opnd *arg2;  // 操作数2
+    Opnd *ret;   // 返回值
+    struct Quad *next;  //下一个四元式
+} Quad;
+
+Quad *parse_to_quads(Token **token);
+void print_quads(Quad *quads);
 
 //
 // codegen.c
 //
 
-void codegen(Node *node);
+// void codegen(Node *node);
 
 //
 // util.c

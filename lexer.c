@@ -118,17 +118,17 @@ bool at_eof(Token *token) {
 }
 
 // 打印所有token
-void print_token(Token *token){
-    printf("token列表:\n");
+void print_tokens(Token *token){
+    printf("token序列:\n");
     for (Token *cur = token; !at_eof(cur); cur = cur->next)
     {
         if (cur->type == TK_NUM){
-            printf("( %d , 数字 )\n", cur->val);
+            printf("(%d, 数字)\n", cur->val);
         } 
         else if (cur->type == TK_PUNCT) {
             char punct[TMP_STR_SIZE] = {0};
             strncpy(punct, cur->loc, cur->len);
-            printf("( \"%s\" , 符号 )\n", punct);
+            printf("(\"%s\", 符号)\n", punct);
         }
         else
             error_at_origin(cur->loc, "打印时遇到未知的token类型");

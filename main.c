@@ -2,8 +2,9 @@
 
 // 命令行参数选项
 static bool opt_p; //展示模式
-static bool opt_pt; //展示模式, 打印token列表
+static bool opt_pt; //展示模式, 打印token序列
 static bool opt_ps; //展示模式, 打印汇编代码
+static bool opt_pq; //展示模式, 打印四元式序列
 
 // 解析命令行参数
 static void parse_args(int argc, char **argv) {
@@ -19,8 +20,10 @@ static void parse_args(int argc, char **argv) {
                         opt_pt = true;
                     else if (argv[i+1][j] == 's')
                         opt_ps = true;
+                    else if (argv[i+1][j] == 'q')
+                        opt_pq = true;
                     else 
-                        error("未知的打印选项");
+                        error("未知的打印选项: %c", argv[i+1][j]);
                 }
                 ++i;
             } else
@@ -37,14 +40,19 @@ int main(int argc, char **argv) {
 
     Token *token = tokenize(read_file(argv[1]));
     if (opt_pt) 
-        print_token(token);
+        print_tokens(token);
 
-    Node *node = parse(&token);
+    // Node *node = parse(&token);
+    Quad *quad = parse_to_quads(&token);
+    if (opt_pq)
+        print_quads(quad);
+
+
 
     if (opt_p && opt_ps)
         printf("汇编代码:\n");
-    if (!opt_p || (opt_p && opt_ps))
-        codegen(node);
+    // if (!opt_p || (opt_p && opt_ps))
+    //     codegen(node);
 
     return 0;
 }
