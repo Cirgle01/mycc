@@ -35,7 +35,7 @@ equality   = relational ("==" relational | "!=" relational)*
 relational = add ("<" add | "<=" add | ">" add | ">=" add)*
 add        = mul ("+" mul | "-" mul)*
 mul        = unary ("*" unary | "/" unary)*
-unary      = ("+" | "-")? primary
+unary      = ("+" | "-")unary | primary
 primary    = num | "(" expr ")"
 */
 
@@ -101,7 +101,7 @@ static Node *unary(Token **token) {
     if (consume(token, "+"))
         return unary(token);
     if (consume(token, "-"))
-        return new_node(ND_SUB, new_node_num(0), unary(token));
+        return new_node(ND_NEG, unary(token), NULL);
     return primary(token);
 }
 

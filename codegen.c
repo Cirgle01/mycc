@@ -22,6 +22,10 @@ static void gen_expr(Node *node) {
     case ND_NUM:
         printf("    mov rax, %d\n", node->val);
         return;
+    case ND_NEG:
+        gen_expr(node->lhs);
+        printf("    neg rax\n");
+        return;
     }
 
     gen_expr(node->rhs);
