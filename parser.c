@@ -10,17 +10,6 @@ static Quad *quad_head = NULL;
 static Quad *quad_tail = NULL;
 static int temp_counter = 0;
 
-// 四元式构建
-// static Quad *new_quad(Quad *cur, Optor *opr, Opnd *arg1, Opnd *arg2, Opnd *ret) {
-//     Quad *quad = calloc(1, sizeof(Quad));
-//     quad->opr = opr;
-//     quad->arg1 = arg1;
-//     quad->arg2 = arg2;
-//     quad->ret = ret;
-//     cur->next = quad;
-//     return quad;
-// }
-
 // 创建新四元式（简化版）
 static Quad *new_quad(Optor opr, Opnd *arg1, Opnd *arg2, Opnd *ret) {
     Quad *quad = calloc(1, sizeof(Quad));
@@ -30,7 +19,7 @@ static Quad *new_quad(Optor opr, Opnd *arg1, Opnd *arg2, Opnd *ret) {
     quad->ret = ret;
     quad->next = NULL;
     
-    // 四元式头尾设置
+    // 全局四元式头尾设置
     if (quad_tail) quad_tail->next = quad;
     else quad_head = quad;
     quad_tail = quad;
@@ -214,7 +203,7 @@ Quad *parse_to_quads(Token **token) {
     
     Opnd *result = expr(token);
     
-    // 为最终结果生成一个赋值四元式（如果需要）
+    // 如果返回数字常量, 为最终结果生成一个赋值四元式
     if (!result->istemp) {
         Opnd *final_temp = new_temp();
         new_quad(OPR_IS, result, NULL, final_temp);

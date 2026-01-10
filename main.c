@@ -42,7 +42,6 @@ int main(int argc, char **argv) {
     if (opt_pt) 
         print_tokens(token);
 
-    // Node *node = parse(&token);
     Quad *quad = parse_to_quads(&token);
     if (opt_pq)
         print_quads(quad);
@@ -51,8 +50,8 @@ int main(int argc, char **argv) {
 
     if (opt_p && opt_ps)
         printf("汇编代码:\n");
-    // if (!opt_p || (opt_p && opt_ps))
-    //     codegen(node);
+    if (!opt_p || (opt_p && opt_ps))
+        codegen(quad);
 
     return 0;
 }

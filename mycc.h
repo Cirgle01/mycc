@@ -55,7 +55,7 @@ typedef enum {
     OPR_LT,  // <
     OPR_LE,  // <=
     OPR_NEG, // unary -
-    OPR_IS  // unary =
+    OPR_IS   // unary =
 } Optor;
 
 // 四元式操作数
@@ -79,7 +79,7 @@ void print_quads(Quad *quads);
 // codegen.c
 //
 
-// void codegen(Node *node);
+void codegen(Quad *quad);
 
 //
 // util.c
