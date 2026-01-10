@@ -202,6 +202,8 @@ Quad *parse_to_quads(Token **token) {
     quad_head = quad_tail = NULL;
     
     Opnd *result = expr(token);
+    if ((*token)->type != TK_EOF)
+        error_at_origin((*token)->loc, "意外的token");
     
     // 如果返回数字常量, 为最终结果生成一个赋值四元式
     if (!result->istemp) {
