@@ -27,7 +27,7 @@ static void parse_args(int argc, char **argv) {
                 }
                 ++i;
             } else
-                error("-p选项后缺少打印内容选择参数(t/s)");
+                error("未选择打印内容(t/s/q)");
 
         } else {
             error("未知的参数");

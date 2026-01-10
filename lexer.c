@@ -99,14 +99,14 @@ void expect(Token **token, char *op) {
     if ((*token)->type != TK_PUNCT 
         || strlen(op) != (*token)->len 
         || memcmp((*token)->loc, op, (*token)->len))
-        error_at_origin((*token)->loc, "不是'%s'", op);
+        error_at_origin((*token)->loc, "语法错误:应是'%s'但不是", op);
     *token = (*token)->next;
 }
 
 // 如果下一个token是数字,则向前读取一个token并返回其数值, 否则报告错误(依赖全局变量token)
 int expect_number(Token **token) {
     if ((*token)->type != TK_NUM)
-        error_at_origin((*token)->loc, "不是数字");
+        error_at_origin((*token)->loc, "语法错误:应是数字但不是");
     int val = (*token)->val;
     *token = (*token)->next;
     return val;
