@@ -43,6 +43,11 @@ static Opnd *temp_opnd(int val) {
     return opd;
 }
 
+// 生成新的临时变量
+static Opnd *new_temp(void) {
+    return temp_opnd(temp_counter++);
+}
+
 /* 文法:
 expr       = equality
 equality   = relational ("==" relational | "!=" relational)*
@@ -52,11 +57,6 @@ mul        = unary ("*" unary | "/" unary)*
 unary      = ("+" | "-")unary | primary
 primary    = num | "(" expr ")"
 */
-
-// 生成新的临时变量
-static Opnd *new_temp(void) {
-    return temp_opnd(temp_counter++);
-}
 
 // 递归下降解析函数（返回操作数）
 static Opnd *expr(Token **token);
@@ -246,7 +246,7 @@ static void print_opnd(Opnd *opnd) {
     }
 }
 
-// 输出四元式序列到文件（或标准输出）
+// 输出四元式序列
 void print_quads(Quad *quads) {
     printf("四元式序列:\n");
     

@@ -74,9 +74,6 @@ static void gen_quad(Quad *quad) {
         
         // 运算
         switch (quad->opr) {
-        case OPR_NEG:
-            ;
-            break;
         case OPR_ADD: // +
             printf("    add rax, rdi\n");
             break;

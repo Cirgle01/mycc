@@ -84,7 +84,7 @@ Token *tokenize(char *p) {
 // token 操作函数
 //
 
-// 如果下一个token是期望的符号, 则向前读取一个token并返回真, 否则返回假(依赖全局变量token)
+// 如果下一个token是期望的符号, 则向前读取一个token并返回真, 否则返回假
 bool consume(Token **token, char *op) {
     if ((*token)->type != TK_PUNCT 
         || strlen(op) != (*token)->len
@@ -94,7 +94,7 @@ bool consume(Token **token, char *op) {
     return true;
 }
 
-// 如果下一个token是期望的符号，则向前读取一个token, 否则报告错误(依赖全局变量token)
+// 如果下一个token是期望的符号，则向前读取一个token, 否则报告错误
 void expect(Token **token, char *op) {
     if ((*token)->type != TK_PUNCT 
         || strlen(op) != (*token)->len 
@@ -103,7 +103,7 @@ void expect(Token **token, char *op) {
     *token = (*token)->next;
 }
 
-// 如果下一个token是数字,则向前读取一个token并返回其数值, 否则报告错误(依赖全局变量token)
+// 如果下一个token是数字,则向前读取一个token并返回其数值, 否则报告错误
 int expect_number(Token **token) {
     if ((*token)->type != TK_NUM)
         error_at_origin((*token)->loc, "语法错误:应是数字但不是");
@@ -112,7 +112,7 @@ int expect_number(Token **token) {
     return val;
 }
 
-// 检查是否在末尾token(依赖全局变量token)
+// 检查是否在末尾token
 bool at_eof(Token *token) {
   return token->type == TK_EOF;
 }
