@@ -10,7 +10,7 @@
 #include <assert.h>
 #include <errno.h>
 
-#define TMP_STR_SIZE 10
+#define TMP_STR_SIZE 100
 
 //
 // lexer.c
@@ -18,18 +18,19 @@
 
 //token 类别
 typedef enum {
-    TK_PUNCT, // 符号
-    TK_NUM,      // 整数类型
-    TK_EOF,      // 终止符号
+    TK_PUNCT,  // 符号
+    TK_IDENT,  // 变量
+    TK_NUM,    // 整数类型
+    TK_EOF,    // 终止符号
 } TokenType;
 
 // token结构体定义
 typedef struct Token {
-    TokenType type;      //Token类型
-    struct Token *next;  //指向下一个Token
-    int val;             //TK_NUM 时有值
-    char *loc;           //token首字符指针(原输入代码中)
-    int len;             //token长度
+    TokenType type;      // Token类型
+    struct Token *next;  // 指向下一个Token
+    int val;             // TK_NUM 时有值
+    char *loc;           // token首字符指针(原输入代码中)
+    int len;             // token长度
 } Token;
 
 void error_at_origin(char *loc, char *fmt, ...);
@@ -88,5 +89,6 @@ void codegen(Quad *quad);
 
 void error(char *fmt, ...);
 char *read_file(char *path);
+int is_alnum(char c);
 
 #endif

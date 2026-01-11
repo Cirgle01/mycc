@@ -37,3 +37,8 @@ char *read_file(char *path) {
     fclose(fp);
     return buf;
 }
+
+// 检测字符是否是字母或数字或'_'
+int is_alnum(char c) {
+  return isalnum(c) || (c == '_');
+}

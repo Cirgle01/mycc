@@ -8,9 +8,21 @@ void error_at_origin(char *loc, char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
 
-    int pos = loc - origin_code;
-    fprintf(stderr, "%s", origin_code);
-    if (pos)  fprintf(stderr, "%*s", pos, " "); // 输出 pos 个空格
+    // 查找问题代码所在行
+    char *line_start = origin_code;
+    int line_counter = 1;
+    for (char *sp = origin_code; sp != loc; ++sp, ++line_counter) {
+        if (*sp == '\n') line_start = sp + 1;
+    }
+
+    int pos = loc - line_start;
+    fprintf(stderr, "c%d: ", line_counter);
+    // 输出单行内容至stderr
+    for (char* p = line_start; *p != '\n'; ++p) {
+        putc(*p, stderr);
+    }
+    fprintf(stderr, "\n");
+    fprintf(stderr, "%*s", pos+4, " "); // 输出 pos 个空格
     fprintf(stderr, "^ ");
     vfprintf(stderr, fmt, ap);
     fprintf(stderr, "\n");
@@ -52,6 +64,16 @@ Token *tokenize(char *p) {
             p++;
             continue;
         }
+        // 是字母, 创建变量类型token
+        if (isalpha(*p)) {
+            //
+            cur = new_token(TK_IDENT, cur, p, 0);
+            char *q = p;
+            // 移动指针至变量名后一个字符
+            while(is_alnum(*++p));
+            cur->len = p - q;
+            continue;
+        }
         // 是数字, 创建新token
         if (isdigit(*p)) {
             cur = new_token(TK_NUM, cur, p, 0);
@@ -69,7 +91,7 @@ Token *tokenize(char *p) {
             continue;
         }
         // 是单字符符号, 创建新token
-        if (strchr("+-*/()<>", *p)) {
+        if (strchr("+-*/()<>=;", *p)) {
             cur = new_token(TK_PUNCT, cur, p++, 1);
             continue;
         }
@@ -122,16 +144,20 @@ void print_tokens(Token *token){
     printf("token序列:\n");
     for (Token *cur = token; !at_eof(cur); cur = cur->next)
     {
+        printf("(");
         if (cur->type == TK_NUM){
-            printf("(%d, 数字)\n", cur->val);
+            printf("%d, 数字", cur->val);
         } 
-        else if (cur->type == TK_PUNCT) {
-            char punct[TMP_STR_SIZE] = {0};
-            strncpy(punct, cur->loc, cur->len);
-            printf("(\"%s\", 符号)\n", punct);
+        else if (cur->type == TK_PUNCT || cur->type == TK_IDENT) {
+            printf("\"");
+            for (int i = 0; i < cur->len; ++i) {
+                printf("%c", *(cur->loc + i));
+            }
+            printf("\", 符号");
         }
         else
-            error_at_origin(cur->loc, "打印时遇到未知的token类型");
+            printf("未知的token类型");
+        printf(")\n");
     }
     printf("\n");
 }
