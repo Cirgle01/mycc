@@ -9,7 +9,7 @@ void error_at_origin(char *loc, char *fmt, ...) {
     va_start(ap, fmt);
 
     int pos = loc - origin_code;
-    fprintf(stderr, "%s\n", origin_code);
+    fprintf(stderr, "%s", origin_code);
     if (pos)  fprintf(stderr, "%*s", pos, " "); // 输出 pos 个空格
     fprintf(stderr, "^ ");
     vfprintf(stderr, fmt, ap);
