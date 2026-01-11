@@ -6,9 +6,9 @@
 //
 
 // 全局变量：四元式链表和临时变量计数器
-static Quad *quad_head = NULL;
-static Quad *quad_tail = NULL;
-static int temp_counter = 0;
+static Quad *quad_head;
+static Quad *quad_tail;
+static int temp_counter;
 
 // 创建新四元式（简化版）
 static Quad *new_quad(Optor opr, Opnd *arg1, Opnd *arg2, Opnd *ret) {
@@ -31,7 +31,7 @@ static Quad *new_quad(Optor opr, Opnd *arg1, Opnd *arg2, Opnd *ret) {
 static Opnd *num_opnd(int val) {
     Opnd *opd = calloc(1, sizeof(Opnd));
     opd->val = val;
-    opd->istemp = 0;
+    opd->istemp = false;
     return opd;
 }
 
@@ -39,7 +39,7 @@ static Opnd *num_opnd(int val) {
 static Opnd *temp_opnd(int val) {
     Opnd *opd = calloc(1, sizeof(Opnd));
     opd->val = val;
-    opd->istemp = 1;
+    opd->istemp = true;
     return opd;
 }
 
@@ -268,4 +268,62 @@ void print_quads(Quad *quads) {
         printf(")\n");
     }
     printf("\n");
+}
+
+static int compute_opr(Optor opr, int num1, int num2) {
+    switch (opr) {
+    case OPR_ADD: return num1 + num2;
+    case OPR_SUB: return num1 - num2;
+    case OPR_MUL: return num1 * num2;
+    case OPR_DIV: 
+        if (num2 == 0)
+            error("优化四元式时遇到除0错误");
+        return num1 / num2;
+    case OPR_EQ:  return num1 == num2;
+    case OPR_NE:  return num1 != num2;
+    case OPR_LT:  return num1 < num2;
+    case OPR_LE:  return num1 <= num2;
+    case OPR_NEG: return -num1;
+    case OPR_IS: return num1;
+    default: error("优化四元式时遇到未知运算符");
+    }
+}
+
+Quad *optimize_quad(Quad *quad) {
+    // 逐条优化四元式(最终仅剩一个结果)
+    Opnd *ret;
+    for ( ; quad != NULL; quad = quad->next)
+    {
+        int ret_temp = quad->ret->val;
+        quad->ret->istemp = false;
+        // 单元运算
+        if (quad->arg2 == NULL) {
+            // 第一条四元式参数一定无临时变量
+            assert(!quad->arg1->istemp);
+            quad->ret->val = compute_opr(quad->opr, quad->arg1->val, 0);
+        }
+        else {
+            // 第一条四元式参数一定无临时变量
+            assert(!quad->arg1->istemp && !quad->arg2->istemp);
+            quad->ret->val = compute_opr(quad->opr, quad->arg1->val, quad->arg2->val);
+        }
+        ret = quad->ret;
+
+        // 替换后面的该临时变量
+        for (Quad *sp = quad->next; sp != NULL && sp->ret->val != ret_temp; sp = sp->next)
+        {
+            // 理论上临时变量不会复用
+            assert(sp->ret->val != ret_temp);
+            if (sp->arg1 != NULL && sp->arg1->istemp && sp->arg1->val == ret_temp)
+                sp->arg1 = quad->ret;
+            if (sp->arg2 != NULL && sp->arg2->istemp && sp->arg2->val == ret_temp)
+                sp->arg2 = quad->ret;
+        }
+    }
+    // 生成最终赋值四元式
+    temp_counter = 0;
+    quad_head = quad_tail = NULL;
+    new_quad(OPR_IS, ret, NULL, new_temp());
+    
+    return quad_head;
 }

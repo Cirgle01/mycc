@@ -74,6 +74,7 @@ typedef struct Quad {
 
 Quad *parse_to_quads(Token **token);
 void print_quads(Quad *quads);
+Quad *optimize_quad(Quad *quad);
 
 //
 // codegen.c

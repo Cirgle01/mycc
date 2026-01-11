@@ -4,7 +4,7 @@ assert() {
     input="$2"
 
     echo "$input" > tmp.txt
-    ./mycc tmp.txt > tmp.s
+    ./mycc tmp.txt -O > tmp.s
     cc -o tmp tmp.s
     ./tmp
     actual="$?"
