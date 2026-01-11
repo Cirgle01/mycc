@@ -1,10 +1,13 @@
 #!/bin/bash
+
+OPT_FLAG=""
+
 assert() {
     expected="$1"
     input="$2"
 
     echo "$input" > tmp.txt
-    ./mycc tmp.txt -O > tmp.s
+    ./mycc tmp.txt $OPT_FLAG > tmp.s
     cc -o tmp tmp.s
     ./tmp
     actual="$?"
@@ -21,7 +24,7 @@ assert_error() {
     input="$1"
 
     echo "$input" > tmp.txt
-    ./mycc tmp.txt > tmp.s
+    ./mycc tmp.txt $OPT_FLAG > tmp.s
 
     if [ $? -ne 0 ]; then
         echo "find error in: $input"
@@ -30,6 +33,12 @@ assert_error() {
         exit 1
     fi
 }
+
+if [ "$1" = "true" ]; then
+    OPT_FLAG="-O"
+    echo "启用四元式优化"
+fi
+
 assert 0 0
 assert 42 42
 
@@ -88,5 +97,10 @@ assert_error "3 < > 4"
 assert_error ""
 assert_error "   "
 assert_error "()"
+
+if [ "$1" = "true" ]; then
+    assert_error "5 / 0"
+    assert_error "(1+2*4)/(6-2*3)"
+fi
 
 echo OK

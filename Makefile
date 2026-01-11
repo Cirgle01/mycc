@@ -8,7 +8,7 @@ mycc: $(OBJS)
 $(OBJS): mycc.h
 
 test: mycc
-	./test.sh
+	./test.sh $(opt_O)
 
 clean:
 	rm -f mycc *.o *~ tmp*
