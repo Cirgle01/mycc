@@ -107,7 +107,7 @@ static Opnd *program(Token **token) {
         res = stmt(token);
     }
     if (res == NULL) {
-        error("语法错误: token序列为空");
+        error("语法错误: token序列为空, 即源代码为空");
     }
     return res;
 }
@@ -281,16 +281,17 @@ static Opnd *primary(Token **token) {
     return num_opnd(expect_number(token));
 }
 
-// 主解析函数
-Quad *parse_to_quads(Token **token) {
+// 主解析函数, 从参数int*返回局部变量总偏移量
+Quad *parse_to_quads(Token **token, int *sum_offset) {
     temp_counter = 0;
     quad_head = quad_tail = NULL;
-    
+    locals = NULL;
+
     Opnd *result = program(token);
     // 似乎使用program()后, 当前token必定是EOF
-    // if ((*token)->type != TK_EOF)
-    //     error_at_origin((*token)->loc, "语法错误:意外的token");
-    
+    if ((*token)->type != TK_EOF)
+        error("bug: parse_to_quads()未处理额外token");
+
     // 如果返回数字常量, 为最终结果生成一个赋值四元式
     if (result->type == OPD_NUM) {
         Opnd *final_temp = new_temp();
@@ -298,6 +299,14 @@ Quad *parse_to_quads(Token **token) {
         result = final_temp;
     }
     
+    // 记录局部变量总偏移量
+    if (locals != NULL) {
+        (*sum_offset) = locals->offset;
+    }
+    else {
+        (*sum_offset) = 0;
+    }
+
     return quad_head;
 }
 

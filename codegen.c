@@ -15,65 +15,84 @@ static void pop(char *arg) {
   depth--;
 }
 
-// 注释掉未完成部分
-/*
-static void gen_quad(Quad *quad) {
-    int last_ret = -1;
-    //                   记录上一个四元式结果的临时变量, 移动指针
-    for (; quad != NULL;last_ret = quad->ret->val, quad = quad->next) {
-        // 单操作数情况
+// 从操作数加载值到dst
+static void load_to_dest(Opnd *opnd, char* dst) {
+    if (opnd == NULL) return;
+    
+    switch (opnd->type) {
+    case OPD_NUM:
+        // 立即数：直接mov
+        printf("    mov %s, %d\n", dst, opnd->val);
+        break;
+        
+    case OPD_LOCAL:
+        // 局部变量：从rbp偏移位置加载
+        printf("    mov %s, [rbp - %d]\n", dst, opnd->val);
+        break;
+        
+    case OPD_TEMP:
+        // 临时变量：从临时栈中pop
+        pop(dst);
+        break;
+    }
+}
+
+// 将rax的值存储到目标操作数
+static void store_from_rax(Opnd *dst) {
+    if (dst == NULL) return;
+    
+    switch (dst->type) {
+    case OPD_TEMP:
+        // 临时变量：push到栈中
+        push();
+        break;
+        
+    case OPD_LOCAL:
+        // 局部变量：存储到rbp偏移位置
+        printf("    mov [rbp - %d], rax\n", dst->val);
+        break;
+        
+    case OPD_NUM:
+        // 不能存储到立即数
+        error("bug: 不能存储值到立即数");
+        break;
+    }
+}
+
+// 根据四元式生成代码
+static Opnd *gen_quad(Quad *quad) {
+    Opnd *last_ret_opnd = NULL;
+    for (; quad != NULL;quad = quad->next) {
+        last_ret_opnd = quad->ret;
+        // 单元运算符
         if (quad->arg2 == NULL) {
+            // 取值
+            load_to_dest(quad->arg1, "rax");
+
             switch (quad->opr) {
             case OPR_IS:
                 assert(quad->next == NULL);
-                printf("    mov rax, %d\n", quad->arg1->val);
                 break;
             case OPR_NEG:
-                if (!quad->arg1->istemp)
-                    printf("    mov rax, %d\n", quad->arg1->val);
-                else
-                    assert(quad->arg1->val == last_ret);
                 printf("    neg rax\n");
                 break;
+            case OPR_ASSIGN:
+                if (quad->ret->type != OPD_LOCAL)
+                    error("赋值操作的左值不是变量");
+                break;
+            default:
+                error("bug: 生成汇编时遇到未知单元运算符");
             }
+            // 存值
+            store_from_rax(quad->ret);
             continue;
         }
+        // 二元运算符
+        // 右操作数加载到rdi
+        load_to_dest(quad->arg2, "rdi");
+        // 左操作数加载到rax
+        load_to_dest(quad->arg1, "rax");
 
-        // 准备操作数
-        // 2个临时变量
-        if (quad->arg1->istemp && quad->arg2->istemp) {
-            if (quad->arg1->val == last_ret) {
-                // rax 直接使用
-                pop("rdi");
-            }
-            else {
-                assert(quad->arg2->val == last_ret);
-                // 移动操作数
-                printf("    mov rdi, rax\n");
-                pop("rax");
-            }
-        }
-        // 仅arg1为临时变量
-        else if (quad->arg1->istemp) {
-            assert(quad->arg1->val == last_ret);
-            // rax 直接使用
-            printf("    mov rdi, %d\n", quad->arg2->val);
-        }
-        // 仅arg2为临时变量
-        else if (quad->arg2->istemp) {
-            assert(quad->arg2->val == last_ret);
-            // 移动操作数
-            printf("    mov rdi, rax\n");
-            printf("    mov rax, %d\n", quad->arg1->val);
-        }
-        // 0个临时变量
-        else {
-            //  如果不是第一个四元式, 上一个运算结果需要入栈
-            if (last_ret != -1) push();
-            printf("    mov rax, %d\n", quad->arg1->val);
-            printf("    mov rdi, %d\n", quad->arg2->val);
-        }
-        
         // 运算
         switch (quad->opr) {
         case OPR_ADD: // +
@@ -106,13 +125,16 @@ static void gen_quad(Quad *quad) {
 
             printf("    movzb rax, al\n");
             break;
+        default:
+            error("bug: 生成汇编时遇到未知二元运算符");
         }
+        store_from_rax(quad->ret);
     }
-    
+    return last_ret_opnd;
 }
 
 // 生成汇编代码
-void codegen(Quad *quad) {
+void codegen(Quad *quad, int local_offset) {
     // 汇编开头
     printf(".intel_syntax noprefix\n");
     // 设置不启用可执行堆栈, 防止编译时警告
@@ -122,13 +144,30 @@ void codegen(Quad *quad) {
     printf(".globl main\n");
     printf("main:\n");
 
+    // 初始化临时变量栈深度
+    depth = 0;
+    
+    if (local_offset > 0) {
+     // 序言：设置栈帧，分配局部变量空间
+        printf("    push rbp\n");                  // 保存调用者的rbp
+        printf("    mov rbp, rsp\n");              // 设置新的栈帧基址
+        printf("    sub rsp, %d\n", local_offset);  // 分配局部变量空间
+    }
+
     // 解析四元式序列生成汇编代码
-    gen_quad(quad);
+    Opnd *last_opnd =  gen_quad(quad);
+    // 如果最后一个四元式结果为临时变量, 将其弹出
+    if (last_opnd->type == OPD_TEMP) {
+        pop("rax");
+    }
+    if (depth != 0) error("bug: 生成的汇编代码栈剩余%d", depth);
 
-    // 汇编 返回
+    if (local_offset > 0) {
+        // 尾声：恢复栈帧并返回
+        // 最后一个表达式的结果应该在rax中（作为返回值）
+        printf("    mov rsp, rbp\n");  // 恢复栈指针（释放局部变量空间）
+        printf("    pop rbp\n");       // 恢复调用者的rbp
+    }
     printf("    ret\n");
-
-    assert(depth == 0);
 }
 
-*/

@@ -45,23 +45,21 @@ int main(int argc, char **argv) {
     Token *token = tokenize(read_file(argv[1]));
     if (opt_pt) 
         print_tokens(token);
-
-    Quad *quad = parse_to_quads(&token);
+    int sum_offset;
+    Quad *quad = parse_to_quads(&token, &sum_offset);
     if (opt_pq)
         print_quads(quad);
-// 注释掉未完成部分
 /*
     if (opt_O) {
         quad = optimize_quad(quad);
         if (opt_pq)
             print_quads(quad);
-    }
-     
+    }*/
 
     if (opt_p && opt_ps)
         printf("汇编代码:\n");
     if (!opt_p || (opt_p && opt_ps))
-        codegen(quad);
-*/ 
+        codegen(quad, sum_offset);
+
     return 0;
 }

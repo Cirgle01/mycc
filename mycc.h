@@ -90,7 +90,7 @@ typedef struct LVar {
     int offset;            // 变量偏移量
 } LVar;
 
-Quad *parse_to_quads(Token **token);
+Quad *parse_to_quads(Token **token, int *sum_offset);
 void print_quads(Quad *quads);
 Quad *optimize_quad(Quad *quad);
 
@@ -98,7 +98,7 @@ Quad *optimize_quad(Quad *quad);
 // codegen.c
 //
 
-void codegen(Quad *quad);
+void codegen(Quad *quad, int sum_offset);
 
 //
 // util.c
