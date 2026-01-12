@@ -36,6 +36,7 @@ typedef struct Token {
 void error_at_origin(char *loc, char *fmt, ...);
 Token *tokenize(char *p);
 bool consume(Token **token, char *op);
+Token *consume_ident(Token **token);
 void expect(Token **token, char *op);
 int expect_number(Token **token);
 bool at_eof(Token *token);
@@ -47,22 +48,30 @@ void print_tokens(Token *token);
 
 // 四元式运算符
 typedef enum {
-    OPR_ADD, // +
-    OPR_SUB, // -
-    OPR_MUL, // *
-    OPR_DIV, // /
-    OPR_EQ,  // ==
-    OPR_NE,  // !=
-    OPR_LT,  // <
-    OPR_LE,  // <=
-    OPR_NEG, // unary -
-    OPR_IS   // unary =
+    OPR_ADD,    // +
+    OPR_SUB,    // -
+    OPR_MUL,    // *
+    OPR_DIV,    // /
+    OPR_EQ,     // ==
+    OPR_NE,     // !=
+    OPR_LT,     // <
+    OPR_LE,     // <=
+    OPR_NEG,    // unary -
+    OPR_IS,     // unary temp=
+    OPR_ASSIGN  // unary local=
 } Optor;
+
+// 四元式操作数类型
+typedef enum {
+    OPD_NUM,   // 数字
+    OPD_TEMP,  // 临时变量
+    OPD_LOCAL  // 变量
+} OpndType;
 
 // 四元式操作数
 typedef struct Opnd {
-    int val;        // 数值
-    bool istemp;  // 类型 是否为临时变量
+    int val;        // 数值|临时变量编号|局部变量偏移量
+    OpndType type;  // 类型
 } Opnd;
 
 typedef struct Quad {
@@ -72,6 +81,14 @@ typedef struct Quad {
     Opnd *ret;   // 返回值
     struct Quad *next;  //下一个四元式
 } Quad;
+
+// 局部变量结构体
+typedef struct LVar {
+    struct LVar *next;    // 指向下一个变量或 NULL
+    char *name;           // 变量名
+    int len;              // 名称长度
+    int offset;            // 变量偏移量
+} LVar;
 
 Quad *parse_to_quads(Token **token);
 void print_quads(Quad *quads);

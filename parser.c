@@ -5,10 +5,14 @@
 // 四元式创建部分
 //
 
-// 全局变量：四元式链表和临时变量计数器
+// 全局变量
+// 四元式链表头尾
 static Quad *quad_head;
 static Quad *quad_tail;
+// 临时变量计数器
 static int temp_counter;
+// 局部变量链表
+LVar *locals;
 
 // 创建新四元式（简化版）
 static Quad *new_quad(Optor opr, Opnd *arg1, Opnd *arg2, Opnd *ret) {
@@ -31,21 +35,37 @@ static Quad *new_quad(Optor opr, Opnd *arg1, Opnd *arg2, Opnd *ret) {
 static Opnd *num_opnd(int val) {
     Opnd *opd = calloc(1, sizeof(Opnd));
     opd->val = val;
-    opd->istemp = false;
+    opd->type = OPD_NUM;
     return opd;
 }
 
-//临时变量操作数
+// 临时变量操作数
 static Opnd *temp_opnd(int val) {
     Opnd *opd = calloc(1, sizeof(Opnd));
     opd->val = val;
-    opd->istemp = true;
+    opd->type = OPD_TEMP;
+    return opd;
+}
+
+// 变量操作数
+static Opnd *local_opnd(int val) {
+    Opnd *opd = calloc(1, sizeof(Opnd));
+    opd->val = val;
+    opd->type = OPD_LOCAL;
     return opd;
 }
 
 // 生成新的临时变量
 static Opnd *new_temp(void) {
     return temp_opnd(temp_counter++);
+}
+
+// 按名称查找变量, 如果未找到返回NULL
+LVar *find_lvar(Token *tok) {
+  for (LVar *var = locals; var; var = var->next)
+    if (var->len == tok->len && !memcmp(tok->loc, var->name, var->len))
+      return var;
+  return NULL;
 }
 
 /* 文法:
@@ -56,19 +76,60 @@ add        = mul ("+" mul | "-" mul)*
 mul        = unary ("*" unary | "/" unary)*
 unary      = ("+" | "-")unary | primary
 primary    = num | "(" expr ")"
+
+program    = stmt*
+stmt       = expr ";"
+expr       = assign
+assign     = equality ("=" assign)?
+equality   = relational ("==" relational | "!=" relational)*
+relational = add ("<" add | "<=" add | ">" add | ">=" add)*
+add        = mul ("+" mul | "-" mul)*
+mul        = unary ("*" unary | "/" unary)*
+unary      = ("+" | "-")? primary
+primary    = num | ident | "(" expr ")"
 */
 
 // 递归下降解析函数（返回操作数）
+static Opnd *program(Token **token);
+static Opnd *stmt(Token **token);
 static Opnd *expr(Token **token);
+static Opnd *assign(Token **token);
 static Opnd *equality(Token **token);
 static Opnd *relational(Token **token);
 static Opnd *add(Token **token);
 static Opnd *mul(Token **token);
-static Opnd *primary(Token **token);
 static Opnd *unary(Token **token);
+static Opnd *primary(Token **token);
+
+static Opnd *program(Token **token) {
+    Opnd *res = NULL;
+    while (!at_eof(*token)) {
+        res = stmt(token);
+    }
+    if (res == NULL) {
+        error("语法错误: token序列为空");
+    }
+    return res;
+}
+
+static Opnd *stmt(Token **token) {
+    Opnd *res = expr(token);
+    expect(token, ";");
+    return res;
+}
 
 static Opnd *expr(Token **token) {
-    return equality(token);
+    return assign(token);
+}
+
+static Opnd *assign(Token **token) {
+    Opnd *res = equality(token);
+    // if (res->type != OPD_LOCAL) 
+    //     error_at_origin((*token)->loc, "语法错误: 等号左侧不是变量");
+    if (consume(token, "=")) {
+        new_quad(OPR_ASSIGN, assign(token), NULL, res);
+    }
+    return res;
 }
 
 static Opnd *equality(Token **token) {
@@ -192,6 +253,28 @@ static Opnd *primary(Token **token) {
         expect(token, ")");
         return result;
     }
+    // 尝试ident
+    Token *may_ident = consume_ident(token);
+    if (may_ident != NULL) {
+        Opnd *loc;
+        // 查询已有变量
+        LVar *lvar = find_lvar(may_ident);
+        // 已有:获取那个变量编号并创建节点
+        if (lvar) {
+            loc = local_opnd(lvar->offset);
+        }
+        else {
+            // 没有:创建新变量并入栈;创建节点
+            lvar = calloc(1, sizeof(LVar));
+            lvar->next = locals;
+            lvar->name = may_ident->loc;
+            lvar->len = may_ident->len;
+            lvar->offset = locals ? locals->offset + 8 : 8;
+            loc = local_opnd(lvar->offset);
+            locals = lvar;
+        }
+        return loc;
+    }
     // 数字字面量
     return num_opnd(expect_number(token));
 }
@@ -201,12 +284,13 @@ Quad *parse_to_quads(Token **token) {
     temp_counter = 0;
     quad_head = quad_tail = NULL;
     
-    Opnd *result = expr(token);
-    if ((*token)->type != TK_EOF)
-        error_at_origin((*token)->loc, "语法错误:意外的token");
+    Opnd *result = program(token);
+    // 似乎使用program()后, 当前token必定是EOF
+    // if ((*token)->type != TK_EOF)
+    //     error_at_origin((*token)->loc, "语法错误:意外的token");
     
     // 如果返回数字常量, 为最终结果生成一个赋值四元式
-    if (!result->istemp) {
+    if (result->type == OPD_NUM) {
         Opnd *final_temp = new_temp();
         new_quad(OPR_IS, result, NULL, final_temp);
         result = final_temp;
@@ -218,16 +302,17 @@ Quad *parse_to_quads(Token **token) {
 // 将运算符枚举转换为字符串
 static const char *opr_to_str(Optor opr) {
     switch (opr) {
-    case OPR_ADD: return "+";
-    case OPR_SUB: return "-";
-    case OPR_MUL: return "*";
-    case OPR_DIV: return "/";
-    case OPR_EQ:  return "==";
-    case OPR_NE:  return "!=";
-    case OPR_LT:  return "<";
-    case OPR_LE:  return "<=";
-    case OPR_NEG: return "neg";
-    case OPR_IS:  return "=";
+    case OPR_ADD:    return "+";
+    case OPR_SUB:    return "-";
+    case OPR_MUL:    return "*";
+    case OPR_DIV:    return "/";
+    case OPR_EQ:     return "==";
+    case OPR_NE:     return "!=";
+    case OPR_LT:     return "<";
+    case OPR_LE:     return "<=";
+    case OPR_NEG:    return "neg";
+    case OPR_IS:     return "=";
+    case OPR_ASSIGN: return ":=";
     default: return "???";
     }
 }
@@ -238,11 +323,19 @@ static void print_opnd(Opnd *opnd) {
         printf("_");
         return;
     }
-    
-    if (opnd->istemp) {
-        printf("t%d", opnd->val);
-    } else {
+    switch (opnd->type)
+    {
+    case OPD_NUM:
         printf("%d", opnd->val);
+        return;
+    case OPD_TEMP:
+        printf("t%d", opnd->val);
+        return;
+    case OPD_LOCAL:
+        printf("a%d", opnd->val);
+        return;
+    default:
+        printf("???");
     }
 }
 
@@ -257,7 +350,7 @@ void print_quads(Quad *quads) {
         printf(", ");
         
         // 一元运算符的arg2为NULL
-        if (q->opr == OPR_NEG) {
+        if (q->arg2 == NULL) {
             printf("_");
         } else {
             print_opnd(q->arg2);
@@ -289,6 +382,8 @@ static int compute_opr(Optor opr, int num1, int num2) {
     }
 }
 
+// 暂时注释掉四元式优化
+/*
 Quad *optimize_quad(Quad *quad) {
     // 逐条优化四元式(最终仅剩一个结果)
     Opnd *ret;
@@ -327,3 +422,4 @@ Quad *optimize_quad(Quad *quad) {
     
     return quad_head;
 }
+*/

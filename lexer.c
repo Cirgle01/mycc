@@ -116,6 +116,15 @@ bool consume(Token **token, char *op) {
     return true;
 }
 
+// 如果下一个token是变量, 则向前读取一个token并返回之前的变量token, 否则返回NULL
+Token *consume_ident(Token **token) {
+    if ((*token)->type != TK_IDENT)
+        return NULL;
+    Token *ident = (*token);
+    *token = (*token)->next;
+    return ident;
+}
+
 // 如果下一个token是期望的符号，则向前读取一个token, 否则报告错误
 void expect(Token **token, char *op) {
     if ((*token)->type != TK_PUNCT 

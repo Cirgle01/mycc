@@ -15,6 +15,8 @@ static void pop(char *arg) {
   depth--;
 }
 
+// 注释掉未完成部分
+/*
 static void gen_quad(Quad *quad) {
     int last_ret = -1;
     //                   记录上一个四元式结果的临时变量, 移动指针
@@ -128,3 +130,5 @@ void codegen(Quad *quad) {
 
     assert(depth == 0);
 }
+
+*/
