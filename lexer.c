@@ -11,8 +11,11 @@ void error_at_origin(char *loc, char *fmt, ...) {
     // 查找问题代码所在行
     char *line_start = origin_code;
     int line_counter = 1;
-    for (char *sp = origin_code; sp != loc; ++sp, ++line_counter) {
-        if (*sp == '\n') line_start = sp + 1;
+    for (char *sp = origin_code; sp < loc ; ++sp) {
+        if (*sp == '\n') {
+            line_start = sp + 1;
+            ++line_counter;
+        }
     }
 
     int pos = loc - line_start;

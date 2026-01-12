@@ -114,7 +114,9 @@ static Opnd *program(Token **token) {
 
 static Opnd *stmt(Token **token) {
     Opnd *res = expr(token);
-    expect(token, ";");
+    if (!consume(token, ";")) {
+        error_at_origin((*token)->loc-1, "句尾缺少';'");
+    }
     return res;
 }
 
