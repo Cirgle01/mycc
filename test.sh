@@ -34,7 +34,7 @@ assert_error() {
     fi
 }
 
-if [ "$1" = "true" ]; then
+if [ "$1" = "1" ]; then
     OPT_FLAG="-O"
     echo "启用四元式优化"
 fi
@@ -85,6 +85,7 @@ assert 8 'a= 5 + (b=1+2);'
 assert 15 '3 + (a = 6*2);'
 assert 170 'a = 5;b = -a + 10;c = +b * -3;d = -(a + b) * (+c - 2);'
 assert 1 'x = (((1 + 2) * 3) - 4) / 5;'
+assert 6 'a=1;a=a+2;a=a+3;'
 
 assert_error '3+4'
 assert_error "3 @ 4;"
@@ -108,7 +109,7 @@ assert_error "   ;"
 assert_error "()"
 assert_error "();"
 
-if [ "$1" = "true" ]; then
+if [ "$1" = "1" ]; then
     assert_error "5 / 0"
     assert_error "(1+2*4)/(6-2*3)"
 fi

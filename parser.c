@@ -381,51 +381,53 @@ static int compute_opr(Optor opr, int num1, int num2) {
     case OPR_MUL: return num1 * num2;
     case OPR_DIV: 
         if (num2 == 0)
-            error("优化四元式时遇到除0错误");
+            error("优化时遇到除0错误");
         return num1 / num2;
     case OPR_EQ:  return num1 == num2;
     case OPR_NE:  return num1 != num2;
     case OPR_LT:  return num1 < num2;
     case OPR_LE:  return num1 <= num2;
     case OPR_NEG: return -num1;
-    case OPR_IS: return num1;
-    default: error("优化四元式时遇到未知运算符");
+    case OPR_IS:  return num1;
+    case OPR_ASSIGN: return num1;
+    default: error("bug: 优化四元式时遇到未知运算符");
     }
 }
 
-// 暂时注释掉四元式优化
-/*
+static int same_opnd(Opnd *opnd1, Opnd *opnd2) {
+    return (opnd1->type == opnd2->type) && (opnd1->val == opnd2->val);
+}
+
 Quad *optimize_quad(Quad *quad) {
     // 逐条优化四元式(最终仅剩一个结果)
     Opnd *ret;
     for ( ; quad != NULL; quad = quad->next)
     {
-        int ret_temp = quad->ret->val;
-        quad->ret->istemp = false;
-        // 单元运算
-        if (quad->arg2 == NULL) {
-            // 第一条四元式参数一定无临时变量
-            assert(!quad->arg1->istemp);
-            quad->ret->val = compute_opr(quad->opr, quad->arg1->val, 0);
-        }
-        else {
-            // 第一条四元式参数一定无临时变量
-            assert(!quad->arg1->istemp && !quad->arg2->istemp);
-            quad->ret->val = compute_opr(quad->opr, quad->arg1->val, quad->arg2->val);
-        }
-        ret = quad->ret;
+        Opnd *replace_opnd = quad->ret;
+        Opnd *const_opnd;
+        if (quad->arg1->type != OPD_NUM) error("优化时遇到未赋值变量使用");
 
-        // 替换后面的该临时变量
-        for (Quad *sp = quad->next; sp != NULL && sp->ret->val != ret_temp; sp = sp->next)
-        {
-            // 理论上临时变量不会复用
-            assert(sp->ret->val != ret_temp);
-            if (sp->arg1 != NULL && sp->arg1->istemp && sp->arg1->val == ret_temp)
-                sp->arg1 = quad->ret;
-            if (sp->arg2 != NULL && sp->arg2->istemp && sp->arg2->val == ret_temp)
-                sp->arg2 = quad->ret;
+        if (quad->arg2 == NULL) {
+            //单元运算
+            const_opnd = num_opnd(compute_opr(quad->opr, quad->arg1->val, 0));
         }
+        else{
+            //2元运算
+            if (quad->arg2->type != OPD_NUM) error("优化时遇到未赋值变量使用");
+            const_opnd = num_opnd(compute_opr(quad->opr, quad->arg1->val, quad->arg2->val));
+        }
+
+        // 替换后面的该变量
+        for (Quad *sp = quad->next; sp != NULL && !same_opnd(sp->ret, replace_opnd); sp = sp->next)
+        {
+            if (sp->arg1 != NULL && same_opnd(sp->arg1, replace_opnd))
+                sp->arg1 = const_opnd;
+            if (sp->arg2 != NULL && same_opnd(sp->arg2, replace_opnd))
+                sp->arg2 = const_opnd;
+        }
+        ret = const_opnd;
     }
+
     // 生成最终赋值四元式
     temp_counter = 0;
     quad_head = quad_tail = NULL;
@@ -433,4 +435,3 @@ Quad *optimize_quad(Quad *quad) {
     
     return quad_head;
 }
-*/
