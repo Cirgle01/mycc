@@ -56,6 +56,8 @@ typedef enum {
     OPR_NE,     // !=
     OPR_LT,     // <
     OPR_LE,     // <=
+    OPR_GT,     // >
+    OPR_GE,     // >=
     OPR_NEG,    // unary -
     OPR_IS,     // unary temp=
     OPR_ASSIGN  // unary local=

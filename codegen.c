@@ -112,6 +112,8 @@ static Opnd *gen_quad(Quad *quad) {
         case OPR_NE:  // !=
         case OPR_LT:  // <
         case OPR_LE:  // <=
+        case OPR_GT:  // >
+        case OPR_GE:  // >=
             printf("    cmp rax, rdi\n");
 
             if (quad->opr == OPR_EQ)
@@ -122,7 +124,11 @@ static Opnd *gen_quad(Quad *quad) {
                 printf("    setl al\n");
             else if (quad->opr == OPR_LE)
                 printf("    setle al\n");
-
+            else if (quad->opr == OPR_GT)
+                printf("    setg al\n");
+            else if (quad->opr == OPR_GE)
+                printf("    setge al\n");
+            
             printf("    movzb rax, al\n");
             break;
         default:

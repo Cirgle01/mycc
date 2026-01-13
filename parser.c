@@ -69,14 +69,6 @@ LVar *find_lvar(Token *tok) {
 }
 
 /* 文法:
-expr       = equality
-equality   = relational ("==" relational | "!=" relational)*
-relational = add ("<" add | "<=" add | ">" add | ">=" add)*
-add        = mul ("+" mul | "-" mul)*
-mul        = unary ("*" unary | "/" unary)*
-unary      = ("+" | "-")unary | primary
-primary    = num | "(" expr ")"
-
 program    = stmt*
 stmt       = expr ";"
 expr       = assign
@@ -170,7 +162,7 @@ static Opnd *relational(Token **token) {
             // a > b 转换为 b < a
             Opnd *right = add(token);
             Opnd *result = new_temp();
-            new_quad(OPR_LT, right, left, result);
+            new_quad(OPR_GT, left, right, result);
             left = result;
         }
         else if (consume(token, "<=")) {
@@ -183,7 +175,7 @@ static Opnd *relational(Token **token) {
             // a >= b 转换为 b <= a
             Opnd *right = add(token);
             Opnd *result = new_temp();
-            new_quad(OPR_LE, right, left, result);
+            new_quad(OPR_GE, left, right, result);
             left = result;
         }
         else {
@@ -321,6 +313,8 @@ static const char *opr_to_str(Optor opr) {
     case OPR_NE:     return "!=";
     case OPR_LT:     return "<";
     case OPR_LE:     return "<=";
+    case OPR_GT:     return ">";
+    case OPR_GE:     return ">=";
     case OPR_NEG:    return "neg";
     case OPR_IS:     return "=";
     case OPR_ASSIGN: return ":=";
@@ -387,6 +381,8 @@ static int compute_opr(Optor opr, int num1, int num2) {
     case OPR_NE:  return num1 != num2;
     case OPR_LT:  return num1 < num2;
     case OPR_LE:  return num1 <= num2;
+    case OPR_GT:  return num1 > num2;
+    case OPR_GE:  return num1 >= num2;
     case OPR_NEG: return -num1;
     case OPR_IS:  return num1;
     case OPR_ASSIGN: return num1;
