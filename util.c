@@ -17,7 +17,7 @@ char *read_file(char *path) {
     // 打开文件
     FILE *fp = fopen(path, "r");
     if (!fp)
-        error("cannot open %s: %s", path, strerror(errno));
+        error("无法打开文件 %s: %s", path, strerror(errno));
 
     // 获取文件长度
     if (fseek(fp, 0, SEEK_END) == -1)

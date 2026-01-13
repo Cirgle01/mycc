@@ -9,6 +9,17 @@ static bool opt_O;  //进行中间代码优化
 
 // 解析命令行参数
 static void parse_args(int argc, char **argv) {
+    if (argc < 2) {
+        printf("使用方法: %s <输入文件> [选项]\n", argv[0]);
+        printf("选项:\n");
+        printf("  -O          进行代码优化\n");
+        printf("  -p [参数]   展示模式,显示指定的内容\n");
+        printf("      参数(可多个一起使用):\n");
+        printf("        t    显示token序列\n");
+        printf("        q    显示四元式\n");
+        printf("        s    显示生成的汇编内容\n");
+        exit(0);
+    }
     if (argc > 5)
         error("参数过多");
     for (int i = 2; i < argc; ++i) {
