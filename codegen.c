@@ -135,6 +135,7 @@ static Opnd *gen_quad(Quad *quad) {
 
 // 生成汇编代码
 void codegen(Quad *quad, int local_offset) {
+    if (quad == NULL) error("中间代码为空");
     // 汇编开头
     printf(".intel_syntax noprefix\n");
     // 设置不启用可执行堆栈, 防止编译时警告
