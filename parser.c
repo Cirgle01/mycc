@@ -119,9 +119,10 @@ static Opnd *expr(Token **token) {
 
 static Opnd *assign(Token **token) {
     Opnd *res = equality(token);
-    // if (res->type != OPD_LOCAL) 
-    //     error_at_origin((*token)->loc, "语法错误: 等号左侧不是变量");
+    Token *last_token = (*token);
     if (consume(token, "=")) {
+        if (res->type != OPD_LOCAL) 
+            error_at_origin(last_token->loc, "语法错误: 等号左侧不是变量");
         new_quad(OPR_ASSIGN, assign(token), NULL, res);
     }
     return res;

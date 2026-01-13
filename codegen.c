@@ -77,8 +77,6 @@ static Opnd *gen_quad(Quad *quad) {
                 printf("    neg rax\n");
                 break;
             case OPR_ASSIGN:
-                if (quad->ret->type != OPD_LOCAL)
-                    error("赋值操作的左值不是变量");
                 break;
             default:
                 error("bug: 生成汇编时遇到未知单元运算符");

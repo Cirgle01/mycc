@@ -102,6 +102,8 @@ assert_error "3 * * 4;"
 assert_error "3 == == 4;"
 assert_error "3 < > 4;"
 
+assert_error "a+5= 5 + (b=1+2);"
+
 assert_error ""
 assert_error ";"
 assert_error "   "
