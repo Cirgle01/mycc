@@ -11,8 +11,9 @@ static Quad *quad_head;
 static Quad *quad_tail;
 // 临时变量计数器
 static int temp_counter;
-// 局部变量链表
-LVar *locals;
+// 局部变量链表头尾
+LVar *locals_head;
+LVar *locals_tail;
 
 // 创建新四元式（简化版）
 static Quad *new_quad(Optor opr, Opnd *arg1, Opnd *arg2, Opnd *ret) {
@@ -62,7 +63,7 @@ static Opnd *new_temp(void) {
 
 // 按名称查找变量, 如果未找到返回NULL
 LVar *find_lvar(Token *tok) {
-  for (LVar *var = locals; var; var = var->next)
+  for (LVar *var = locals_head; var; var = var->next)
     if (var->len == tok->len && !memcmp(tok->loc, var->name, var->len))
       return var;
   return NULL;
@@ -260,12 +261,27 @@ static Opnd *primary(Token **token) {
         else {
             // 没有:创建新变量并入栈;创建节点
             lvar = calloc(1, sizeof(LVar));
-            lvar->next = locals;
+            // lvar->next = locals_tail;
             lvar->name = may_ident->loc;
             lvar->len = may_ident->len;
-            lvar->offset = locals ? locals->offset + 8 : 8;
+            lvar->next = NULL;
+            /*
+            // 全局四元式头尾设置
+            if (quad_tail) quad_tail->next = quad;
+            else quad_head = quad;
+            quad_tail = quad;
+            */
+           if (locals_tail) {
+                lvar->offset = locals_tail->offset + 8;
+                locals_tail->next = lvar;
+            }
+            else {
+                // 链表为空
+                lvar->offset = 8;
+                locals_head = lvar;
+            }
+            locals_tail = lvar;
             loc = local_opnd(lvar->offset);
-            locals = lvar;
         }
         return loc;
     }
@@ -277,7 +293,7 @@ static Opnd *primary(Token **token) {
 Quad *parse_to_quads(Token **token, int *sum_offset) {
     temp_counter = 0;
     quad_head = quad_tail = NULL;
-    locals = NULL;
+    locals_head = NULL;
 
     Opnd *result = program(token);
     // 似乎使用program()后, 当前token必定是EOF
@@ -292,8 +308,8 @@ Quad *parse_to_quads(Token **token, int *sum_offset) {
     }
     
     // 记录局部变量总偏移量
-    if (locals != NULL) {
-        (*sum_offset) = locals->offset;
+    if (locals_head != NULL) {
+        (*sum_offset) = locals_tail->offset;
     }
     else {
         (*sum_offset) = 0;
@@ -365,6 +381,18 @@ void print_quads(Quad *quads) {
         print_opnd(q->ret);
         printf(")\n");
     }
+
+    if (locals_head != NULL) {
+        //局部变量显示
+        printf("\n局部变量:\n");
+        for (LVar* p = locals_head; p != NULL; p = p->next) {
+            for (int i = 0; i < p->len; ++i) {
+                printf("%c", *(p->name + i));
+            }
+            printf(": a%d\n", p->offset);
+        }
+    }
+    
     printf("\n");
 }
 
@@ -427,6 +455,7 @@ Quad *optimize_quad(Quad *quad) {
     // 生成最终赋值四元式
     temp_counter = 0;
     quad_head = quad_tail = NULL;
+    locals_head = locals_tail =NULL;
     new_quad(OPR_IS, ret, NULL, new_temp());
     
     return quad_head;

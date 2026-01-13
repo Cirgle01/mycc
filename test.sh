@@ -79,7 +79,7 @@ assert 1 "((2 + 3) * 4) == (5 * 4);"
 assert 4 "(100 / (5 + 5)) - (3 * 2);"
 
 assert 6 'foo = 1;\nbar = 2 + 3;\n foo + bar;'
-assert 6 'foo = 1;bar = 2 + 3;foo + bar;'
+assert 6 'foo_ = 1;bar1 = 2 + 3;foo_ + bar1;'
 assert 2 'a=b=2;'
 assert 8 'a= 5 + (b=1+2);'
 assert 15 '3 + (a = 6*2);'

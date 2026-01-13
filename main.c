@@ -54,8 +54,10 @@ int main(int argc, char **argv) {
         // 当前语法一定能优化至仅剩一个常量
         sum_offset = 0;
         quad = optimize_quad(quad);
-        if (opt_pq)
+        if (opt_pq) {
+            printf("优化后");
             print_quads(quad);
+        }
     }
 
     if (opt_p && opt_ps)
