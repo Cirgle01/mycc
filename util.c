@@ -12,6 +12,16 @@ void error(char *fmt, ...) {
     exit(1);
 }
 
+void warning(char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+
+    vfprintf(stderr, fmt, ap);
+    fprintf(stderr, "\n");
+
+    va_end(ap);
+}
+
 // 读取并返回指定文件的内容
 char *read_file(char *path) {
     // 打开文件

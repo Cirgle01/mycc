@@ -62,11 +62,18 @@ static Opnd *new_temp(void) {
 }
 
 // 按名称查找变量, 如果未找到返回NULL
-LVar *find_lvar(Token *tok) {
-  for (LVar *var = locals_head; var; var = var->next)
-    if (var->len == tok->len && !memcmp(tok->loc, var->name, var->len))
-      return var;
-  return NULL;
+LVar *find_lvar_name(Token *tok) {
+    for (LVar *var = locals_head; var; var = var->next)
+        if (var->len == tok->len && !memcmp(tok->loc, var->name, var->len))
+            return var;
+    return NULL;
+}
+
+// 按偏移查找变量, 如果未找到返回NULL
+LVar *find_lvar_offset(int offset) {
+    for (LVar *var = locals_head; var; var = var->next)
+        if (var->offset == offset)  return var;
+    return NULL;
 }
 
 /* 文法:
@@ -123,6 +130,8 @@ static Opnd *assign(Token **token) {
     if (consume(token, "=")) {
         if (res->type != OPD_LOCAL) 
             error_at_origin(last_token->loc, "语法错误: 等号左侧不是变量");
+        LVar *assigned = find_lvar_offset(res->val);
+        assigned->assign_count++;
         new_quad(OPR_ASSIGN, assign(token), NULL, res);
     }
     return res;
@@ -254,12 +263,9 @@ static Opnd *primary(Token **token) {
     if (may_ident != NULL) {
         Opnd *loc;
         // 查询已有变量
-        LVar *lvar = find_lvar(may_ident);
+        LVar *lvar = find_lvar_name(may_ident);
         // 已有:获取那个变量编号并创建节点
-        if (lvar) {
-            loc = local_opnd(lvar->offset);
-        }
-        else {
+        if (!lvar) {
             // 没有:创建新变量并入栈;创建节点
             lvar = calloc(1, sizeof(LVar));
             // lvar->next = locals_tail;
@@ -282,8 +288,9 @@ static Opnd *primary(Token **token) {
                 locals_head = lvar;
             }
             locals_tail = lvar;
-            loc = local_opnd(lvar->offset);
         }
+        lvar->appear_count++;
+        loc = local_opnd(lvar->offset);
         return loc;
     }
     // 数字字面量
@@ -306,6 +313,15 @@ Quad *parse_to_quads(Token **token, int *sum_offset) {
         Opnd *final_temp = new_temp();
         new_quad(OPR_IS, result, NULL, final_temp);
         result = final_temp;
+    }
+
+    // 检查是否有未赋值就使用的左值
+    for (LVar *p = locals_head; p != NULL; p = p->next) {
+        if (p->assign_count == 0) {
+            char locname[TMP_STR_SIZE] = {0};
+            strncpy(locname,p->name, p->len);
+            warning("警告: 变量 %s 使用前未定义", locname);
+        }
     }
     
     // 记录局部变量总偏移量
@@ -354,7 +370,7 @@ static void print_opnd(Opnd *opnd) {
         printf("t%d", opnd->val);
         return;
     case OPD_LOCAL:
-        printf("a%d", opnd->val);
+        printf("a%d", (opnd->val) / 8);
         return;
     default:
         printf("???");
@@ -386,11 +402,13 @@ void print_quads(Quad *quads) {
     if (locals_head != NULL) {
         //局部变量显示
         printf("\n局部变量:\n");
+        printf("名称\t表示\t赋值数\t使用数\n");
         for (LVar* p = locals_head; p != NULL; p = p->next) {
-            for (int i = 0; i < p->len; ++i) {
-                printf("%c", *(p->name + i));
-            }
-            printf(": a%d\n", p->offset);
+            char locname[TMP_STR_SIZE] = {0};
+            strncpy(locname,p->name, p->len);
+            printf("%s\t", locname);
+            printf("a%d\t", (p->offset)/8);
+            printf("%d\t%d\n", p->assign_count, (p->appear_count) - (p->assign_count));
         }
     }
     

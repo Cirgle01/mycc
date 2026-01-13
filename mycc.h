@@ -89,7 +89,9 @@ typedef struct LVar {
     struct LVar *next;    // 指向下一个变量或 NULL
     char *name;           // 变量名
     int len;              // 名称长度
-    int offset;            // 变量偏移量
+    int offset;           // 变量偏移量
+    int assign_count;     // 赋值次数
+    int appear_count;     // 出现(赋值+使用)次数
 } LVar;
 
 Quad *parse_to_quads(Token **token, int *sum_offset);
@@ -107,6 +109,7 @@ void codegen(Quad *quad, int sum_offset);
 //
 
 void error(char *fmt, ...);
+void warning(char *fmt, ...);
 char *read_file(char *path);
 int is_alnum(char c);
 

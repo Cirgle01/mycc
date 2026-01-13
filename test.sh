@@ -112,8 +112,8 @@ assert_error "()"
 assert_error "();"
 
 if [ "$1" = "1" ]; then
-    assert_error "5 / 0"
-    assert_error "(1+2*4)/(6-2*3)"
+    assert_error "5 / 0;"
+    assert_error "(1+2*4)/(6-2*3);"
 fi
 
 echo OK
