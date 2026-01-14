@@ -58,8 +58,10 @@ int main(int argc, char **argv) {
         print_tokens(token);
     int sum_offset;
     Quad *quad = parse_to_quads(&token, &sum_offset);
-    if (opt_pq)
+    if (opt_pq) {
         print_quads(quad);
+        print_local();
+    }
 
     if (opt_O) {
         // 当前语法一定能优化至仅剩一个常量

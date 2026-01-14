@@ -21,6 +21,7 @@ typedef enum {
     TK_PUNCT,  // 符号
     TK_IDENT,  // 变量
     TK_NUM,    // 整数类型
+    TK_RETURN,
     TK_EOF,    // 终止符号
 } TokenType;
 
@@ -35,9 +36,10 @@ typedef struct Token {
 
 void error_at_origin(char *loc, char *fmt, ...);
 Token *tokenize(char *p);
-bool consume(Token **token, char *op);
+bool consume(Token **token, TokenType type);
+bool consume_punct(Token **token, char *op);
 Token *consume_ident(Token **token);
-void expect(Token **token, char *op);
+void expect_punct(Token **token, char *op);
 int expect_number(Token **token);
 bool at_eof(Token *token);
 void print_tokens(Token *token);
@@ -59,7 +61,7 @@ typedef enum {
     OPR_GT,     // >
     OPR_GE,     // >=
     OPR_NEG,    // unary -
-    OPR_IS,     // unary temp=
+    OPR_RETURN,     // unary temp=
     OPR_ASSIGN  // unary local=
 } Optor;
 
@@ -96,6 +98,7 @@ typedef struct LVar {
 
 Quad *parse_to_quads(Token **token, int *sum_offset);
 void print_quads(Quad *quads);
+void print_local();
 Quad *optimize_quad(Quad *quad);
 
 //

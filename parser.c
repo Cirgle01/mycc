@@ -78,7 +78,7 @@ LVar *find_lvar_offset(int offset) {
 
 /* 文法:
 program    = stmt*
-stmt       = expr ";"
+stmt    = expr ";"  | "return" expr ";"
 expr       = assign
 assign     = equality ("=" assign)?
 equality   = relational ("==" relational | "!=" relational)*
@@ -113,8 +113,14 @@ static Opnd *program(Token **token) {
 }
 
 static Opnd *stmt(Token **token) {
-    Opnd *res = expr(token);
-    if (!consume(token, ";")) {
+    Opnd *res;
+    if (consume(token, TK_RETURN)) {
+        res = expr(token);
+        new_quad(OPR_RETURN, NULL, NULL, res);
+    } else {
+        res = expr(token);
+    }
+    if (!consume_punct(token, ";")) {
         error_at_origin((*token)->loc-1, "句尾缺少';'");
     }
     return res;
@@ -127,7 +133,7 @@ static Opnd *expr(Token **token) {
 static Opnd *assign(Token **token) {
     Opnd *res = equality(token);
     Token *last_token = (*token);
-    if (consume(token, "=")) {
+    if (consume_punct(token, "=")) {
         if (res->type != OPD_LOCAL) 
             error_at_origin(last_token->loc, "语法错误: 等号左侧不是变量");
         LVar *assigned = find_lvar_offset(res->val);
@@ -141,13 +147,13 @@ static Opnd *equality(Token **token) {
     Opnd *left = relational(token);
     
     for (;;) {
-        if (consume(token, "==")) {
+        if (consume_punct(token, "==")) {
             Opnd *right = relational(token);
             Opnd *result = new_temp();
             new_quad(OPR_EQ, left, right, result);
             left = result;
         }
-        else if (consume(token, "!=")) {
+        else if (consume_punct(token, "!=")) {
             Opnd *right = relational(token);
             Opnd *result = new_temp();
             new_quad(OPR_NE, left, right, result);
@@ -163,26 +169,26 @@ static Opnd *relational(Token **token) {
     Opnd *left = add(token);
     
     for (;;) {
-        if (consume(token, "<")) {
+        if (consume_punct(token, "<")) {
             Opnd *right = add(token);
             Opnd *result = new_temp();
             new_quad(OPR_LT, left, right, result);
             left = result;
         }
-        else if (consume(token, ">")) {
+        else if (consume_punct(token, ">")) {
             // a > b 转换为 b < a
             Opnd *right = add(token);
             Opnd *result = new_temp();
             new_quad(OPR_GT, left, right, result);
             left = result;
         }
-        else if (consume(token, "<=")) {
+        else if (consume_punct(token, "<=")) {
             Opnd *right = add(token);
             Opnd *result = new_temp();
             new_quad(OPR_LE, left, right, result);
             left = result;
         }
-        else if (consume(token, ">=")) {
+        else if (consume_punct(token, ">=")) {
             // a >= b 转换为 b <= a
             Opnd *right = add(token);
             Opnd *result = new_temp();
@@ -199,13 +205,13 @@ static Opnd *add(Token **token) {
     Opnd *left = mul(token);
     
     for (;;) {
-        if (consume(token, "+")) {
+        if (consume_punct(token, "+")) {
             Opnd *right = mul(token);
             Opnd *result = new_temp();
             new_quad(OPR_ADD, left, right, result);
             left = result;
         }
-        else if (consume(token, "-")) {
+        else if (consume_punct(token, "-")) {
             Opnd *right = mul(token);
             Opnd *result = new_temp();
             new_quad(OPR_SUB, left, right, result);
@@ -221,13 +227,13 @@ static Opnd *mul(Token **token) {
     Opnd *left = unary(token);
     
     for (;;) {
-        if (consume(token, "*")) {
+        if (consume_punct(token, "*")) {
             Opnd *right = unary(token);
             Opnd *result = new_temp();
             new_quad(OPR_MUL, left, right, result);
             left = result;
         }
-        else if (consume(token, "/")) {
+        else if (consume_punct(token, "/")) {
             Opnd *right = unary(token);
             Opnd *result = new_temp();
             new_quad(OPR_DIV, left, right, result);
@@ -240,10 +246,10 @@ static Opnd *mul(Token **token) {
 }
 
 static Opnd *unary(Token **token) {
-    if (consume(token, "+")) {
+    if (consume_punct(token, "+")) {
         return unary(token);  // 正号，直接传递
     }
-    if (consume(token, "-")) {
+    if (consume_punct(token, "-")) {
         Opnd *operand = unary(token);
         Opnd *result = new_temp();
         new_quad(OPR_NEG, operand, NULL, result);
@@ -253,9 +259,9 @@ static Opnd *unary(Token **token) {
 }
 
 static Opnd *primary(Token **token) {
-    if (consume(token, "(")) {
+    if (consume_punct(token, "(")) {
         Opnd *result = expr(token);
-        expect(token, ")");
+        expect_punct(token, ")");
         return result;
     }
     // 尝试ident
@@ -272,12 +278,6 @@ static Opnd *primary(Token **token) {
             lvar->name = may_ident->loc;
             lvar->len = may_ident->len;
             lvar->next = NULL;
-            /*
-            // 全局四元式头尾设置
-            if (quad_tail) quad_tail->next = quad;
-            else quad_head = quad;
-            quad_tail = quad;
-            */
            if (locals_tail) {
                 lvar->offset = locals_tail->offset + 8;
                 locals_tail->next = lvar;
@@ -308,12 +308,14 @@ Quad *parse_to_quads(Token **token, int *sum_offset) {
     if ((*token)->type != TK_EOF)
         error("bug: parse_to_quads()未处理额外token");
 
+/*
     // 如果返回数字常量, 为最终结果生成一个赋值四元式
     if (result->type == OPD_NUM) {
         Opnd *final_temp = new_temp();
-        new_quad(OPR_IS, result, NULL, final_temp);
+        new_quad(OPR_RETURN, result, NULL, final_temp);
         result = final_temp;
     }
+*/
 
     // 检查是否有未赋值就使用的左值
     for (LVar *p = locals_head; p != NULL; p = p->next) {
@@ -338,19 +340,19 @@ Quad *parse_to_quads(Token **token, int *sum_offset) {
 // 将运算符枚举转换为字符串
 static const char *opr_to_str(Optor opr) {
     switch (opr) {
-    case OPR_ADD:    return "+";
-    case OPR_SUB:    return "-";
-    case OPR_MUL:    return "*";
-    case OPR_DIV:    return "/";
-    case OPR_EQ:     return "==";
-    case OPR_NE:     return "!=";
-    case OPR_LT:     return "<";
-    case OPR_LE:     return "<=";
-    case OPR_GT:     return ">";
-    case OPR_GE:     return ">=";
-    case OPR_NEG:    return "neg";
-    case OPR_IS:     return "=";
-    case OPR_ASSIGN: return ":=";
+    case OPR_ADD:     return "+";
+    case OPR_SUB:     return "-";
+    case OPR_MUL:     return "*";
+    case OPR_DIV:     return "/";
+    case OPR_EQ:      return "==";
+    case OPR_NE:      return "!=";
+    case OPR_LT:      return "<";
+    case OPR_LE:      return "<=";
+    case OPR_GT:      return ">";
+    case OPR_GE:      return ">=";
+    case OPR_NEG:     return "neg";
+    case OPR_RETURN:  return "ret";
+    case OPR_ASSIGN:  return ":=";
     default: return "???";
     }
 }
@@ -384,11 +386,17 @@ void print_quads(Quad *quads) {
     for (Quad *q = quads; q != NULL; q = q->next) {
         printf("(%-4s, ", opr_to_str(q->opr));
         
-        print_opnd(q->arg1);
+        if (q->arg1 == NULL) {
+            // arg1为NULL
+            printf("_");
+        } else {
+            print_opnd(q->arg1);
+        }
+
         printf(", ");
         
-        // 一元运算符的arg2为NULL
         if (q->arg2 == NULL) {
+            // arg2为NULL
             printf("_");
         } else {
             print_opnd(q->arg2);
@@ -399,10 +407,14 @@ void print_quads(Quad *quads) {
         printf(")\n");
     }
 
+    printf("\n");
+}
+
+void print_local() {
     if (locals_head != NULL) {
         //局部变量显示
         printf("\n局部变量:\n");
-        printf("名称\t表示\t赋值数\t使用数\n");
+        printf("名称\t表示\t赋值\t使用\n");
         for (LVar* p = locals_head; p != NULL; p = p->next) {
             char locname[TMP_STR_SIZE] = {0};
             strncpy(locname,p->name, p->len);
@@ -410,8 +422,9 @@ void print_quads(Quad *quads) {
             printf("a%d\t", (p->offset)/8);
             printf("%d\t%d\n", p->assign_count, (p->appear_count) - (p->assign_count));
         }
+    } else {
+        printf("无局部变量\n");
     }
-    
     printf("\n");
 }
 
@@ -431,7 +444,7 @@ static int compute_opr(Optor opr, int num1, int num2) {
     case OPR_GT:  return num1 > num2;
     case OPR_GE:  return num1 >= num2;
     case OPR_NEG: return -num1;
-    case OPR_IS:  return num1;
+    case OPR_RETURN:  return num1;
     case OPR_ASSIGN: return num1;
     default: error("bug: 优化四元式时遇到未知运算符");
     }
@@ -471,11 +484,6 @@ Quad *optimize_quad(Quad *quad) {
         ret = const_opnd;
     }
 
-    // 生成最终赋值四元式
-    temp_counter = 0;
-    quad_head = quad_tail = NULL;
-    locals_head = locals_tail =NULL;
-    new_quad(OPR_IS, ret, NULL, new_temp());
     
     return quad_head;
 }

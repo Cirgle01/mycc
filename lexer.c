@@ -10,12 +10,20 @@ void error_at_origin(char *loc, char *fmt, ...) {
 
     // 查找问题代码所在行
     char *line_start = origin_code;
+    char *last_line_start = NULL;
     int line_counter = 1;
     for (char *sp = origin_code; sp < loc ; ++sp) {
         if (*sp == '\n') {
+            last_line_start = line_start;
             line_start = sp + 1;
             ++line_counter;
         }
+    }
+
+    // 对loc指向'\0'(即token为TK_EOF)进行修正
+    if (*loc == '\0') {
+        line_start = last_line_start;
+        line_counter--;
     }
 
     int pos = loc - line_start;
@@ -69,13 +77,20 @@ Token *tokenize(char *p) {
         }
         // 是字母, 创建变量类型token
         if (isalpha(*p)) {
-            //
-            cur = new_token(TK_IDENT, cur, p, 0);
-            char *q = p;
-            // 移动指针至变量名后一个字符
-            while(is_alnum(*++p));
-            cur->len = p - q;
-            continue;
+            if (startswith(p, "return") && !is_alnum(p[6])) {
+                // 是 return 
+                cur = new_token(TK_RETURN, cur, p, 6);
+                p += 6;
+                continue;
+            } else {
+                // 是 变量名
+                cur = new_token(TK_IDENT, cur, p, 0);
+                char *q = p;
+                // 移动指针至变量名后一个字符
+                while(is_alnum(*++p));
+                cur->len = p - q;
+                continue;
+            }
         }
         // 是数字, 创建新token
         if (isdigit(*p)) {
@@ -109,8 +124,15 @@ Token *tokenize(char *p) {
 // token 操作函数
 //
 
+// 如果下一个token是期望的token类型, 则向前读取一个token并返回真, 否则返回假
+bool consume(Token **token, TokenType type) {
+    if ((*token)->type != type)
+        return false;
+    *token = (*token)->next;
+    return true;
+}
 // 如果下一个token是期望的符号, 则向前读取一个token并返回真, 否则返回假
-bool consume(Token **token, char *op) {
+bool consume_punct(Token **token, char *op) {
     if ((*token)->type != TK_PUNCT 
         || strlen(op) != (*token)->len
         || memcmp((*token)->loc, op, (*token)->len))
@@ -129,7 +151,7 @@ Token *consume_ident(Token **token) {
 }
 
 // 如果下一个token是期望的符号，则向前读取一个token, 否则报告错误
-void expect(Token **token, char *op) {
+void expect_punct(Token **token, char *op) {
     if ((*token)->type != TK_PUNCT 
         || strlen(op) != (*token)->len 
         || memcmp((*token)->loc, op, (*token)->len))

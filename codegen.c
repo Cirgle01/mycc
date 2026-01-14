@@ -60,19 +60,31 @@ static void store_from_rax(Opnd *dst) {
 }
 
 // 根据四元式生成代码
-static Opnd *gen_quad(Quad *quad) {
-    Opnd *last_ret_opnd = NULL;
-    for (; quad != NULL;quad = quad->next) {
-        last_ret_opnd = quad->ret;
-        // 单元运算符
-        if (quad->arg2 == NULL) {
+static Quad *gen_quad(Quad *quad) {
+    Quad *last_quad = NULL;
+    for (; quad != NULL;last_quad = quad, quad = quad->next) {
+        if (quad->arg1 == NULL) {
+            // 零元运算符
+            // 取值
+            load_to_dest(quad->ret, "rax");
+            switch (quad->opr) {
+            case OPR_RETURN:
+                if (depth != 0) error("bug: 汇编返回时栈剩余%d", depth);
+                // 尾声：恢复栈帧并返回
+                // 最后一个表达式的结果应该在rax中（作为返回值）
+                printf("    mov rsp, rbp\n");  // 恢复栈指针（释放局部变量空间）
+                printf("    pop rbp\n");       // 恢复调用者的rbp
+                printf("    ret\n");
+                break;
+            default:
+                error("bug: 生成汇编时遇到未知单元运算符");
+            }
+        } else if (quad->arg2 == NULL) {
+            // 单元运算符
             // 取值
             load_to_dest(quad->arg1, "rax");
 
             switch (quad->opr) {
-            case OPR_IS:
-                assert(quad->next == NULL);
-                break;
             case OPR_NEG:
                 printf("    neg rax\n");
                 break;
@@ -83,58 +95,59 @@ static Opnd *gen_quad(Quad *quad) {
             }
             // 存值
             store_from_rax(quad->ret);
-            continue;
-        }
-        // 二元运算符
-        // 右操作数加载到rdi
-        load_to_dest(quad->arg2, "rdi");
-        // 左操作数加载到rax
-        load_to_dest(quad->arg1, "rax");
+        } else {
+            // 二元运算符
+            // 右操作数加载到rdi
+            load_to_dest(quad->arg2, "rdi");
+            // 左操作数加载到rax
+            load_to_dest(quad->arg1, "rax");
 
-        // 运算
-        switch (quad->opr) {
-        case OPR_ADD: // +
-            printf("    add rax, rdi\n");
-            break;
-        case OPR_SUB: // -
-            printf("    sub rax, rdi\n");
-            break;
-        case OPR_MUL: // *
-            printf("    imul rax, rdi\n");
-            break;
-        case OPR_DIV: // /
-            printf("    cqo\n");
-            printf("    idiv rdi\n");
-            break;
-        case OPR_EQ:  // ==
-        case OPR_NE:  // !=
-        case OPR_LT:  // <
-        case OPR_LE:  // <=
-        case OPR_GT:  // >
-        case OPR_GE:  // >=
-            printf("    cmp rax, rdi\n");
+            // 运算
+            switch (quad->opr) {
+            case OPR_ADD: // +
+                printf("    add rax, rdi\n");
+                break;
+            case OPR_SUB: // -
+                printf("    sub rax, rdi\n");
+                break;
+            case OPR_MUL: // *
+                printf("    imul rax, rdi\n");
+                break;
+            case OPR_DIV: // /
+                printf("    cqo\n");
+                printf("    idiv rdi\n");
+                break;
+            case OPR_EQ:  // ==
+            case OPR_NE:  // !=
+            case OPR_LT:  // <
+            case OPR_LE:  // <=
+            case OPR_GT:  // >
+            case OPR_GE:  // >=
+                printf("    cmp rax, rdi\n");
 
-            if (quad->opr == OPR_EQ)
-                printf("    sete al\n");
-            else if (quad->opr == OPR_NE)
-                printf("    setne al\n");
-            else if (quad->opr == OPR_LT)
-                printf("    setl al\n");
-            else if (quad->opr == OPR_LE)
-                printf("    setle al\n");
-            else if (quad->opr == OPR_GT)
-                printf("    setg al\n");
-            else if (quad->opr == OPR_GE)
-                printf("    setge al\n");
-            
-            printf("    movzb rax, al\n");
-            break;
-        default:
-            error("bug: 生成汇编时遇到未知二元运算符");
+                if (quad->opr == OPR_EQ)
+                    printf("    sete al\n");
+                else if (quad->opr == OPR_NE)
+                    printf("    setne al\n");
+                else if (quad->opr == OPR_LT)
+                    printf("    setl al\n");
+                else if (quad->opr == OPR_LE)
+                    printf("    setle al\n");
+                else if (quad->opr == OPR_GT)
+                    printf("    setg al\n");
+                else if (quad->opr == OPR_GE)
+                    printf("    setge al\n");
+                
+                printf("    movzb rax, al\n");
+                break;
+            default:
+                error("bug: 生成汇编时遇到未知二元运算符");
+            }
+            // 存值
+            store_from_rax(quad->ret);
         }
-        store_from_rax(quad->ret);
     }
-    return last_ret_opnd;
+    return last_quad;
 }
 
 // 生成汇编代码
@@ -152,27 +165,27 @@ void codegen(Quad *quad, int local_offset) {
     // 初始化临时变量栈深度
     depth = 0;
     
+    // 序言：设置栈帧，分配局部变量空间
+    printf("    push rbp\n");                  // 保存调用者的rbp
+    printf("    mov rbp, rsp\n");              // 设置新的栈帧基址
     if (local_offset > 0) {
-     // 序言：设置栈帧，分配局部变量空间
-        printf("    push rbp\n");                  // 保存调用者的rbp
-        printf("    mov rbp, rsp\n");              // 设置新的栈帧基址
         printf("    sub rsp, %d\n", local_offset);  // 分配局部变量空间
     }
 
     // 解析四元式序列生成汇编代码
-    Opnd *last_opnd =  gen_quad(quad);
-    // 如果最后一个四元式结果为临时变量, 将其弹出
-    if (last_opnd->type == OPD_TEMP) {
-        pop("rax");
-    }
-    if (depth != 0) error("bug: 生成的汇编代码栈剩余%d", depth);
+    Quad *last_quad = gen_quad(quad);
 
-    if (local_offset > 0) {
+    
+    if (last_quad->opr != OPR_RETURN) {
+        // 未显式返回, 添加返回0
+        if (last_quad->ret->type == OPD_TEMP) pop("rax");
+        if (depth != 0) error("bug: 汇编返回时栈剩余%d", depth);
+        printf("    mov rax, 0\n");
         // 尾声：恢复栈帧并返回
         // 最后一个表达式的结果应该在rax中（作为返回值）
         printf("    mov rsp, rbp\n");  // 恢复栈指针（释放局部变量空间）
         printf("    pop rbp\n");       // 恢复调用者的rbp
+        printf("    ret\n");
     }
-    printf("    ret\n");
 }
 
