@@ -36,7 +36,7 @@ static Quad *new_quad(Optor opr, Opnd *arg1, Opnd *arg2, Opnd *ret) {
 static Opnd *num_opnd(int val) {
     Opnd *opd = calloc(1, sizeof(Opnd));
     opd->val = val;
-    opd->type = OPD_NUM;
+    opd->kind = OPD_CONST;
     return opd;
 }
 
@@ -44,7 +44,7 @@ static Opnd *num_opnd(int val) {
 static Opnd *temp_opnd(int val) {
     Opnd *opd = calloc(1, sizeof(Opnd));
     opd->val = val;
-    opd->type = OPD_TEMP;
+    opd->kind = OPD_TEMP;
     return opd;
 }
 
@@ -52,7 +52,7 @@ static Opnd *temp_opnd(int val) {
 static Opnd *local_opnd(int val) {
     Opnd *opd = calloc(1, sizeof(Opnd));
     opd->val = val;
-    opd->type = OPD_LOCAL;
+    opd->kind = OPD_LOCAL;
     return opd;
 }
 
@@ -134,7 +134,7 @@ static Opnd *assign(Token **token) {
     Opnd *res = equality(token);
     Token *last_token = (*token);
     if (consume_punct(token, "=")) {
-        if (res->type != OPD_LOCAL) 
+        if (res->kind != OPD_LOCAL) 
             error_at_origin(last_token->loc, "语法错误: 等号左侧不是变量");
         LVar *assigned = find_lvar_offset(res->val);
         assigned->assign_count++;
@@ -308,15 +308,6 @@ Quad *parse_to_quads(Token **token, int *sum_offset) {
     if ((*token)->type != TK_EOF)
         error("bug: parse_to_quads()未处理额外token");
 
-/*
-    // 如果返回数字常量, 为最终结果生成一个赋值四元式
-    if (result->type == OPD_NUM) {
-        Opnd *final_temp = new_temp();
-        new_quad(OPR_RETURN, result, NULL, final_temp);
-        result = final_temp;
-    }
-*/
-
     // 检查是否有未赋值就使用的左值
     for (LVar *p = locals_head; p != NULL; p = p->next) {
         if (p->assign_count == 0) {
@@ -363,9 +354,9 @@ static void print_opnd(Opnd *opnd) {
         printf("_");
         return;
     }
-    switch (opnd->type)
+    switch (opnd->kind)
     {
-    case OPD_NUM:
+    case OPD_CONST:
         printf("%d", opnd->val);
         return;
     case OPD_TEMP:
@@ -410,16 +401,17 @@ void print_quads(Quad *quads) {
     printf("\n");
 }
 
-void print_local() {
+void print_synbl() {
     if (locals_head != NULL) {
         //局部变量显示
-        printf("\n局部变量:\n");
-        printf("名称\t表示\t赋值\t使用\n");
+        printf("\n符号表:\n");
+        printf("名称\t表示\t地址\t赋值\t使用\n");
         for (LVar* p = locals_head; p != NULL; p = p->next) {
             char locname[TMP_STR_SIZE] = {0};
             strncpy(locname,p->name, p->len);
             printf("%s\t", locname);
             printf("a%d\t", (p->offset)/8);
+            printf("rbp-%d\t", p->offset);
             printf("%d\t%d\n", p->assign_count, (p->appear_count) - (p->assign_count));
         }
     } else {
@@ -451,7 +443,7 @@ static int compute_opr(Optor opr, int num1, int num2) {
 }
 
 static int same_opnd(Opnd *opnd1, Opnd *opnd2) {
-    return (opnd1->type == opnd2->type) && (opnd1->val == opnd2->val);
+    return (opnd1->kind == opnd2->kind) && (opnd1->val == opnd2->val);
 }
 
 Quad *optimize_quad(Quad *quad) {
@@ -461,7 +453,7 @@ Quad *optimize_quad(Quad *quad) {
     {
         Opnd *replace_opnd = quad->ret;
         Opnd *const_opnd;
-        if (quad->arg1->type != OPD_NUM) error("优化时遇到未赋值变量使用");
+        if (quad->arg1->kind != OPD_CONST) error("优化时遇到未赋值变量使用");
 
         if (quad->arg2 == NULL) {
             //单元运算
@@ -469,7 +461,7 @@ Quad *optimize_quad(Quad *quad) {
         }
         else{
             //2元运算
-            if (quad->arg2->type != OPD_NUM) error("优化时遇到未赋值变量使用");
+            if (quad->arg2->kind != OPD_CONST) error("优化时遇到未赋值变量使用");
             const_opnd = num_opnd(compute_opr(quad->opr, quad->arg1->val, quad->arg2->val));
         }
 

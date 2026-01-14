@@ -67,15 +67,15 @@ typedef enum {
 
 // 四元式操作数类型
 typedef enum {
-    OPD_NUM,   // 数字
+    OPD_CONST,   // 数字
     OPD_TEMP,  // 临时变量
-    OPD_LOCAL  // 变量
-} OpndType;
+    OPD_LOCAL  // 局部变量
+} OpndKind;
 
 // 四元式操作数
 typedef struct Opnd {
     int val;        // 数值|临时变量编号|局部变量偏移量
-    OpndType type;  // 类型
+    OpndKind kind;  // 类型
 } Opnd;
 
 typedef struct Quad {
@@ -98,7 +98,7 @@ typedef struct LVar {
 
 Quad *parse_to_quads(Token **token, int *sum_offset);
 void print_quads(Quad *quads);
-void print_local();
+void print_synbl();
 Quad *optimize_quad(Quad *quad);
 
 //

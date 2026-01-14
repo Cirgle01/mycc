@@ -19,8 +19,8 @@ static void pop(char *arg) {
 static void load_to_dest(Opnd *opnd, char* dst) {
     if (opnd == NULL) return;
     
-    switch (opnd->type) {
-    case OPD_NUM:
+    switch (opnd->kind) {
+    case OPD_CONST:
         // 立即数：直接mov
         printf("    mov %s, %d\n", dst, opnd->val);
         break;
@@ -41,7 +41,7 @@ static void load_to_dest(Opnd *opnd, char* dst) {
 static void store_from_rax(Opnd *dst) {
     if (dst == NULL) return;
     
-    switch (dst->type) {
+    switch (dst->kind) {
     case OPD_TEMP:
         // 临时变量：push到栈中
         push();
@@ -52,7 +52,7 @@ static void store_from_rax(Opnd *dst) {
         printf("    mov [rbp - %d], rax\n", dst->val);
         break;
         
-    case OPD_NUM:
+    case OPD_CONST:
         // 不能存储到立即数
         error("bug: 不能存储值到立即数");
         break;
@@ -178,7 +178,7 @@ void codegen(Quad *quad, int local_offset) {
     
     if (last_quad->opr != OPR_RETURN) {
         // 未显式返回, 添加返回0
-        if (last_quad->ret->type == OPD_TEMP) pop("rax");
+        if (last_quad->ret->kind == OPD_TEMP) pop("rax");
         if (depth != 0) error("bug: 汇编返回时栈剩余%d", depth);
         printf("    mov rax, 0\n");
         // 尾声：恢复栈帧并返回
