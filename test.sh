@@ -89,6 +89,7 @@ assert 6 'a=1;a=a+2;return a=a+3;'
 
 assert 0 '3+4+5;'
 assert 5 'return 5;3+4+5;'
+assert 0 ''
 
 assert_error 'return 3+4'
 assert_error "return 3 @ 4;"

@@ -173,6 +173,25 @@ bool at_eof(Token *token) {
   return token->type == TK_EOF;
 }
 
+static void print_token_type(Token *token) {
+    switch (token->type) {
+    case TK_NUM:
+        printf("数字");
+        break;
+    case TK_IDENT:
+        printf("变量");
+        break;
+    case TK_PUNCT:
+        printf("符号");
+        break;
+    case TK_RETURN:
+        printf("RETURN");
+        break;
+    default:
+        error("bug: 打印token时遇到未知类型");
+    }
+}
+
 // 打印所有token
 void print_tokens(Token *token){
     printf("token序列:\n");
@@ -180,17 +199,16 @@ void print_tokens(Token *token){
     {
         printf("(");
         if (cur->type == TK_NUM){
-            printf("%d, 数字", cur->val);
-        } 
-        else if (cur->type == TK_PUNCT || cur->type == TK_IDENT) {
+            printf("%d", cur->val);
+        } else {
             printf("\"");
             for (int i = 0; i < cur->len; ++i) {
                 printf("%c", *(cur->loc + i));
             }
-            printf("\", 符号");
+            printf("\"");
         }
-        else
-            printf("未知的token类型");
+        printf(", ");
+        print_token_type(cur);
         printf(")\n");
     }
     printf("\n");

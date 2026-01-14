@@ -61,20 +61,17 @@ int main(int argc, char **argv) {
     Token *token = tokenize(read_file(argv[1]));
     if (opt_pt) print_tokens(token);
 
-    int sum_offset;
+    int sum_offset = 0;
     Quad *quad = parse_to_quads(&token, &sum_offset);
     if (opt_pq) print_quads(quad);
     if (opt_ps) print_synbl();
 
     if (opt_O) {
-        // 当前语法一定能优化至仅剩一个常量
-        sum_offset = 0;
-        quad = optimize_quad(quad);
+        quad = optimize_quad(&sum_offset);
         if (opt_pq) {
             printf("优化后");
             print_quads(quad);
         }
-        if (opt_ps) print_synbl();
     }
 
     if (opt_p && opt_pa)
